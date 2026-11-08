@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>จองที่พัก ภูชาโลม</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+:root{--forest:#2f5d3a;--forest-d:#244a2d;--moss:#6a8f55;--sand:#f7f2e8;--card:#fffdf8;--ink:#1f2a24;--mute:#6b746d;--line:#e6dfcf;
+--clay:#c9772f;--amber:#d99a1c;--blue:#3b7dd8;--ok:#2e8b57;--bad:#c0392b;--grey:#9aa39c;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--sand);color:var(--ink);font-family:'Noto Sans Thai',system-ui,sans-serif;font-size:15px;line-height:1.5}
+#app{max-width:560px;margin:0 auto;padding:14px 14px 96px}
+#app.wide{max-width:1280px}
+h1{font-size:20px;margin:6px 0 2px}h2{font-size:17px;margin:18px 0 8px}h3{font-size:15px;margin:0 0 6px}
+.sub{color:var(--mute);font-size:13px;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:0 0 12px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--moss);border-color:var(--moss)}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:12px 16px;font:inherit;font-weight:600;background:var(--forest);color:#fff;cursor:pointer;width:100%}
+.btn:active{background:var(--forest-d)}.btn.sec{background:#fff;color:var(--forest);border:1px solid var(--forest)}
+.btn.bad{background:var(--bad)}.btn.sm{width:auto;padding:7px 12px;font-size:13px;border-radius:9px}.btn[disabled]{opacity:.5}
+.stack>*+*{margin-top:10px}
+.chip{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:600;color:#fff;background:var(--grey)}
+.chip.PENDING_PAYMENT{background:var(--amber)}.chip.PAYMENT_REVIEW{background:var(--blue)}.chip.CONFIRMED{background:var(--ok)}
+.chip.CANCELLED,.chip.EXPIRED{background:var(--grey)}.chip.PENDING_REVIEW{background:var(--blue)}.chip.APPROVED{background:var(--ok)}.chip.REJECTED{background:var(--bad)}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px dashed var(--line)}.kv:last-child{border:0}
+.kv b{text-align:right}.big{font-size:22px;font-weight:700}
+.muted{color:var(--mute)}.warn{background:#fff4dc;border:1px solid #f0d28a;color:#7a5a00;padding:10px 12px;border-radius:10px;font-size:13px}
+.err{background:#fdeceb;border:1px solid #f1b8b3;color:#8e2a20;padding:10px 12px;border-radius:10px;font-size:13px}
+.okbox{background:#e8f5ee;border:1px solid #b6dcc6;color:#1d5a3a;padding:10px 12px;border-radius:10px;font-size:13px}
+.stepper{display:flex;align-items:center;gap:10px}.stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:20px}
+.stepper span{min-width:28px;text-align:center;font-weight:700;font-size:17px}
+.zone{margin:14px 0 6px;display:flex;justify-content:space-between;align-items:baseline}
+.units{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.unit{border:1.5px solid var(--moss);background:#fff;border-radius:10px;padding:8px 2px;text-align:center;font-weight:600;cursor:pointer;font-family:inherit;color:var(--ink)}
+.unit small{display:block;font-weight:400;color:var(--mute);font-size:11px}
+.unit.sel{background:var(--forest);color:#fff;border-color:var(--forest)}.unit.sel small{color:#dbe9d2}
+.unit.off{background:#eee;border-color:#e0e0e0;color:#aaa;cursor:not-allowed;text-decoration:line-through}
+.bar{position:fixed;left:0;right:0;bottom:62px;background:var(--card);border-top:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:12px;z-index:20;max-width:560px;margin:0 auto}
+.bar .btn{width:auto;padding:11px 20px}.bar>div{flex:1;min-width:0}
+nav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:8px 2px 7px;font:inherit;font-size:11px;color:var(--mute);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+nav button.on{color:var(--forest);font-weight:700}nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.overlay{position:fixed;inset:0;background:rgba(255,255,255,.7);display:none;align-items:center;justify-content:center;z-index:99}
+.overlay.on{display:flex}.spin{width:36px;height:36px;border:4px solid var(--line);border-top-color:var(--forest);border-radius:50%;animation:sp 0.8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.modal{position:fixed;inset:0;background:rgba(20,30,24,.5);display:flex;align-items:flex-end;justify-content:center;z-index:60}
+.modal>div{background:var(--card);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px}
+@media(min-width:700px){.modal{align-items:center}.modal>div{border-radius:18px}}
+.slip{max-width:100%;border-radius:10px;border:1px solid var(--line);display:block;margin:8px auto}
+.copy{background:var(--sand);border:1px dashed var(--moss);border-radius:10px;padding:10px;font-size:14px}
+.tabs{display:flex;gap:6px;margin:0 0 12px;flex-wrap:wrap}.tabs button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 14px;font:inherit;font-size:13px;cursor:pointer}
+.tabs button.on{background:var(--forest);color:#fff;border-color:var(--forest)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}.kpis .card{margin:0}.kpis .big{margin-top:2px}
+/* calendar */
+.cal{overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:#fff;max-height:70vh}
+.cal table{border-collapse:separate;border-spacing:0;font-size:11px}
+.cal th,.cal td{border-right:1px solid #f0ebdd;border-bottom:1px solid #f0ebdd;text-align:center;padding:0;min-width:30px;height:26px}
+.cal th{position:sticky;top:0;background:#faf6ec;z-index:2;font-weight:600;height:40px;line-height:1.15}
+.cal th.u,.cal td.u{position:sticky;left:0;z-index:3;background:#faf6ec;min-width:58px;text-align:left;padding:0 8px;font-weight:600}
+.cal th.u{z-index:4}.cal th.we{background:#f3e7d1}.cal th.today{background:var(--clay);color:#fff}
+.cal td.we{background:#fdf9f0}.cal td.c{cursor:pointer}.cal td.PENDING_PAYMENT{background:var(--amber)}.cal td.PAYMENT_REVIEW{background:var(--blue)}.cal td.CONFIRMED{background:var(--ok)}
+.cal td.s{border-left:3px solid #fff}.cal tr.zh td{background:#eee7d3;font-weight:700;text-align:left;padding:2px 8px;height:22px;position:sticky;left:0}
+.cal tfoot td{background:#faf6ec;font-weight:600;position:sticky;bottom:0}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin:8px 0}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.mnav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 12px}.mnav b{font-size:17px}
+table.list{width:100%;border-collapse:collapse;font-size:13px}table.list th,table.list td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div id="app"><div class="card" style="text-align:center;margin-top:30vh"><div class="spin" style="margin:0 auto 10px"></div>กำลังเข้าสู่ระบบ…</div></div>
+<nav id="nav" class="hide"></nav>
+<div class="overlay" id="busy"><div class="spin"></div></div>
+<div id="modalRoot"></div>
+
+<script>
+/* ===================== ตั้งค่า (แก้ 2 บรรทัดนี้) ===================== */
+const CONFIG = {
+  LIFF_ID: '2012415921-8P6LrBEe',                                   // จาก LINE Developers > LIFF
+  API_URL: 'https://script.google.com/macros/s/AKfycbykBlwqJktmGYV0NleZw-6B9hQ8qKzdxO6I495s9KiQJfz5v9oSUq3oKbUaXTjgdmU/exec'  // URL ของ Web app จาก Apps Script
+};
+
+/* ===================== ตัวช่วย ===================== */
+const $ = (s, r = document) => r.querySelector(s);
+const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
+const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const TH_DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const STATUS_TH = { PENDING_PAYMENT: 'รอชำระเงิน', PAYMENT_REVIEW: 'รอตรวจสลิป', CONFIRMED: 'ยืนยันแล้ว', CANCELLED: 'ยกเลิก', EXPIRED: 'หมดเวลา', PENDING_REVIEW: 'รอตรวจ', APPROVED: 'อนุมัติ', REJECTED: 'ไม่ผ่าน' };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => '฿' + Number(n || 0).toLocaleString('th-TH');
+const pad = n => String(n).padStart(2, '0');
+function fmtDate(ymd, withDow) {
+  if (!ymd) return '-';
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return (withDow ? TH_DOW[dow] + ' ' : '') + d + ' ' + TH_MONTH[m - 1] + ' ' + (y + 543);
+}
+function fmtDT(s) { if (!s) return '-'; const [d, t] = s.split(' '); return fmtDate(d) + ' ' + (t || '').slice(0, 5); }
+const addDays = (ymd, n) => { const [y, m, d] = ymd.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + n)); return t.getUTCFullYear() + '-' + pad(t.getUTCMonth() + 1) + '-' + pad(t.getUTCDate()); };
+const todayStr = () => S.me ? S.me.today : new Date().toISOString().slice(0, 10);
+function busy(on) { $('#busy').classList.toggle('on', !!on); }
+function toast(msg, kind) { return `<div class="${kind || 'err'}" style="margin:0 0 12px">${esc(msg)}</div>`; }
+
+async function api(action, params) {
+  const idToken = liff.getIDToken();
+  const res = await fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, params: params || {}, idToken }) });
+  const j = await res.json();
+  if (!j.ok) {
+    const e = new Error(j.message || 'เกิดข้อผิดพลาด'); e.code = j.code; e.extra = j.extra;
+    if (j.code === 'UNAUTHENTICATED') { liff.logout(); liff.login({ redirectUri: location.href }); }
+    throw e;
+  }
+  return j.data;
+}
+async function run(fn, errTarget) {
+  busy(true);
+  try { return await fn(); }
+  catch (e) { const t = errTarget ? $(errTarget) : null; if (t) { t.innerHTML = toast(e.message); t.scrollIntoView({ behavior: 'smooth', block: 'center' }); } else alert(e.message); return undefined; }
+  finally { busy(false); }
+}
+function modal(html) { $('#modalRoot').innerHTML = `<div class="modal" onclick="if(event.target===this)closeModal()"><div>${html}</div></div>`; }
+function closeModal() { $('#modalRoot').innerHTML = ''; }
+function copyText(t) { navigator.clipboard && navigator.clipboard.writeText(t).then(() => alert('คัดลอกแล้ว')).catch(() => prompt('คัดลอกข้อความนี้', t)); }
+
+const ICON = {
+  book: '<svg viewBox="0 0 24 24"><path d="M3 20V9l9-6 9 6v11M9 20v-6h6v6"/></svg>',
+  status: '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
+  pay: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>',
+  resch: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>',
+  admin: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>'
+};
+
+/* ===================== เริ่มระบบ ===================== */
+async function init() {
+  try {
+    if (CONFIG.LIFF_ID.startsWith('YOUR_')) throw new Error('ยังไม่ได้ตั้งค่า LIFF_ID / API_URL ในไฟล์ index.html');
+    await liff.init({ liffId: CONFIG.LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+    S.me = await api('me');
+    S.cfg = S.me.config;
+    const p = getPage();
+    S.page = (p === 'admin' && !S.me.isAdmin) ? 'book' : p;
+    go(S.page);
+  } catch (e) {
+    $('#app').innerHTML = `<div class="card"><h3>เปิดระบบไม่สำเร็จ</h3>${toast(e.message)}<button class="btn" onclick="location.reload()">ลองใหม่</button></div>`;
+  }
+}
+function getPage() {
+  const q = new URLSearchParams(location.search);
+  let p = q.get('page');
+  if (!p) { const st = q.get('liff.state'); const m = st && /page=([a-z]+)/.exec(decodeURIComponent(st)); if (m) p = m[1]; }
+  return ['book', 'status', 'pay', 'resch', 'reschedule', 'admin'].includes(p) ? (p === 'reschedule' ? 'resch' : p) : 'book';
+}
+function renderNav() {
+  const items = [['book', 'จองห้อง'], ['status', 'ตรวจสอบ'], ['pay', 'แจ้งชำระ'], ['resch', 'เลื่อนวัน']];
+  if (S.me.isAdmin) items.push(['admin', 'แดชบอร์ด']);
+  const n = $('#nav'); n.classList.remove('hide');
+  n.innerHTML = items.map(([k, t]) => `<button class="${S.page === k ? 'on' : ''}" onclick="go('${k}')">${ICON[k]}<span>${t}</span></button>`).join('');
+}
+function go(page, opts) {
+  if (page === 'book' && !(opts && opts.admin) && S.book && S.book.step === 'done') S.book = null;
+  S.page = page; closeModal(); window.scrollTo(0, 0);
+  $('#app').classList.toggle('wide', page === 'admin');
+  renderNav();
+  ({ book: pageBook, status: pageStatus, pay: pagePay, resch: pageResch, admin: pageAdmin })[page](opts);
+}
+
+/* ===================== 1) จองห้องพัก ===================== */
+function newBook(admin) {
+  const t = todayStr();
+  return { step: 'search', admin: !!admin, checkIn: addDays(t, 1), checkOut: addDays(t, 2), adults: 2, children: 0, avail: null, sel: [], form: { name: S.me.name || '', phone: '', note: '', consent: false }, result: null };
+}
+function pageBook(opts) {
+  if (opts && opts.admin) S.book = newBook(true);
+  if (!S.book) S.book = newBook(false);
+  const B = S.book;
+  if (B.step === 'search') return renderSearch();
+  if (B.step === 'form') return renderForm();
+  if (B.step === 'done') return renderDone();
+}
+function renderSearch() {
+  const B = S.book, c = S.cfg, t = todayStr();
+  const stp = (k, v) => `<div class="stepper"><button onclick="bk('${k}',-1)">−</button><span>${v}</span><button onclick="bk('${k}',1)">+</button></div>`;
+  let html = `<h1>${B.admin ? 'จองแทนลูกค้า' : 'จองห้องพัก'} · ${esc(c.campName)}</h1><p class="sub">เช็คอิน ${esc(c.checkinTime)} · เช็คเอาท์ ${esc(c.checkoutTime)}${c.contactPhone ? ' · โทร ' + esc(c.contactPhone) : ''}</p>`;
+  if (!S.me.adminConfigured) html += `<div class="warn" style="margin-bottom:12px">ยังไม่ได้ตั้งแอดมิน — LINE User ID ของคุณคือ <b style="word-break:break-all">${esc(S.me.userId)}</b><br>นำไปใส่ในชีต Settings ช่อง ADMIN_LINE_USER_IDS เพื่อเปิดแดชบอร์ด</div>`;
+  if (B.admin) html += `<div class="warn" style="margin-bottom:12px">โหมดแอดมิน: การจองจะยืนยันทันที (ไม่ผ่านขั้นตอนชำระเงิน) <a href="#" onclick="S.book=null;go('admin');return false">ยกเลิก</a></div>`;
+  html += `<div class="card"><div class="row"><div><label>วันเช็คอิน</label><input type="date" id="ci" value="${B.checkIn}" ${B.admin ? '' : `min="${t}"`}></div>
+  <div><label>วันเช็คเอาท์</label><input type="date" id="co" value="${B.checkOut}" min="${addDays(B.checkIn, 1)}"></div></div>
+  <div class="row" style="margin-top:12px"><div><label>ผู้ใหญ่</label>${stp('adults', B.adults)}</div><div><label>เด็ก</label>${stp('children', B.children)}</div></div>
+  <div style="margin-top:14px"><button class="btn" onclick="searchRooms()">ค้นหาห้องว่าง</button></div><div id="msg" style="margin-top:10px"></div></div>`;
+  if (B.avail) html += renderUnits();
+  $('#app').innerHTML = html;
+  $('#ci').onchange = e => { B.checkIn = e.target.value; if (B.checkOut <= B.checkIn) B.checkOut = addDays(B.checkIn, 1); B.avail = null; B.sel = []; renderSearch(); };
+  $('#co').onchange = e => { B.checkOut = e.target.value; B.avail = null; B.sel = []; };
+}
+function bk(k, d) { const B = S.book; B[k] = Math.max(k === 'adults' ? 1 : 0, Math.min(30, B[k] + d)); renderSearch(); }
+async function searchRooms() {
+  const B = S.book;
+  B.checkIn = $('#ci').value; B.checkOut = $('#co').value;
+  const r = await run(() => api('availability', { checkIn: B.checkIn, checkOut: B.checkOut, allowPast: B.admin }), '#msg');
+  if (!r) return;
+  B.avail = r; B.sel = []; renderSearch();
+  setTimeout(() => { const el = $('#units'); el && el.scrollIntoView({ behavior: 'smooth' }); }, 50);
+}
+function renderUnits() {
+  const B = S.book, a = B.avail, zones = {};
+  a.units.forEach(u => (zones[u.zone] = zones[u.zone] || []).push(u));
+  let h = `<div id="units"><h2>เลือกห้อง · ${a.nights} คืน (${fmtDate(a.checkIn)} – ${fmtDate(a.checkOut)})</h2>`;
+  Object.keys(zones).sort().forEach(z => {
+    const us = zones[z], free = us.filter(u => u.available).length;
+    h += `<div class="zone"><b>โซน ${esc(z)}</b><span class="muted" style="font-size:12px">รองรับ ${us[0].capacity} คน/หลัง · ว่าง ${free}/${us.length} · ${money(us[0].perNight)}/คืน</span></div><div class="units">`;
+    us.forEach(u => { const sel = B.sel.includes(u.unitId); h += `<button class="unit ${u.available ? '' : 'off'} ${sel ? 'sel' : ''}" ${u.available ? `onclick="toggleUnit('${u.unitId}')"` : 'disabled'}>${esc(u.name)}<small>${u.available ? money(u.total) : 'เต็ม'}</small></button>`; });
+    h += '</div>';
+  });
+  h += '</div>';
+  const sel = a.units.filter(u => B.sel.includes(u.unitId)), cap = sel.reduce((s, u) => s + u.capacity, 0), tot = sel.reduce((s, u) => s + u.total, 0), g = B.adults + B.children;
+  h += `<div class="bar"><div><b>${sel.length} ห้อง · รองรับ ${cap} คน</b><div class="${cap < g && sel.length ? 'muted' : 'muted'}" style="font-size:12px">${sel.length && cap < g ? `⚠ ผู้เข้าพัก ${g} คน ต้องเลือกห้องเพิ่ม` : `รวม ${money(tot)}`}</div></div>
+  <button class="btn" ${sel.length && cap >= g ? '' : 'disabled'} onclick="B_next()">ถัดไป</button></div>`;
+  return h;
+}
+function toggleUnit(id) {
+  const B = S.book, i = B.sel.indexOf(id);
+  if (i >= 0) B.sel.splice(i, 1); else { if (B.sel.length >= S.cfg.maxUnits) return alert('เลือกได้สูงสุด ' + S.cfg.maxUnits + ' ห้อง'); B.sel.push(id); }
+  const y = window.scrollY; renderSearch(); window.scrollTo(0, y);
+}
+function B_next() { S.book.step = 'form'; renderForm(); window.scrollTo(0, 0); }
+function renderForm() {
+  const B = S.book, c = S.cfg, f = B.form;
+  const sel = B.avail.units.filter(u => B.sel.includes(u.unitId)), tot = sel.reduce((s, u) => s + u.total, 0);
+  const dep = Math.ceil(tot * c.depositPercent / 100);
+  $('#app').innerHTML = `<h1>ยืนยันข้อมูลการจอง</h1>
+  <div class="card"><div class="kv"><span>เข้าพัก</span><b>${fmtDate(B.checkIn, 1)}</b></div><div class="kv"><span>ออก</span><b>${fmtDate(B.checkOut, 1)} (${B.avail.nights} คืน)</b></div>
+  <div class="kv"><span>ผู้เข้าพัก</span><b>ผู้ใหญ่ ${B.adults}${B.children ? ' · เด็ก ' + B.children : ''}</b></div>
+  <div class="kv"><span>ห้อง</span><b>${sel.map(u => esc(u.name)).join(', ')}</b></div>
+  <div class="kv"><span>ยอดรวม</span><b class="big">${money(tot)}</b></div>
+  ${B.admin ? '' : `<div class="kv"><span>มัดจำ (${c.depositPercent}%)</span><b>${money(dep)}</b></div>`}</div>
+  <div class="card"><label>ชื่อผู้จอง</label><input id="fn" value="${esc(f.name)}" maxlength="60" autocomplete="name">
+  <label>เบอร์โทร</label><input id="fp" value="${esc(f.phone)}" inputmode="tel" maxlength="12" placeholder="0812345678" autocomplete="tel">
+  <label>หมายเหตุ (ถ้ามี)</label><textarea id="fo" rows="2" maxlength="300">${esc(f.note)}</textarea>
+  ${B.admin ? '' : `<label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink);margin-top:14px"><input type="checkbox" id="fc" style="width:auto;margin-top:4px" ${f.consent ? 'checked' : ''}> <span style="font-size:13px">ยินยอมให้เก็บและใช้ชื่อ เบอร์โทร และ LINE ID เพื่อใช้ในการจองและติดต่อกลับ</span></label>
+  ${c.cancelPolicy ? `<p class="muted" style="font-size:12px">${esc(c.cancelPolicy)}</p>` : ''}
+  <p class="muted" style="font-size:12px">ระบบจะล็อกห้องให้ ${c.holdMinutes} นาที ระหว่างรอชำระเงิน</p>`}
+  <div id="msg"></div></div>
+  <div class="row"><button class="btn sec" onclick="S.book.step='search';renderSearch()">ย้อนกลับ</button><button class="btn" onclick="submitBooking()">${B.admin ? 'บันทึกการจอง' : 'ยืนยันการจอง'}</button></div>`;
+}
+async function submitBooking() {
+  const B = S.book, f = B.form;
+  f.name = $('#fn').value.trim(); f.phone = $('#fp').value.trim(); f.note = $('#fo').value.trim(); f.consent = B.admin ? true : $('#fc').checked;
+  const params = { checkIn: B.checkIn, checkOut: B.checkOut, unitIds: B.sel, adults: B.adults, children: B.children, name: f.name, phone: f.phone, note: f.note, consent: f.consent, allowPast: B.admin };
+  const r = await run(() => api(B.admin ? 'adminCreateBooking' : 'createBooking', params), '#msg');
+  if (!r) return;
+  B.result = r; B.step = 'done'; renderDone(); window.scrollTo(0, 0);
+}
+function bankBox() {
+  const b = S.cfg.bank; if (!b.accountNo && !b.promptpay) return '<div class="warn">ติดต่อที่พักเพื่อสอบถามช่องทางชำระเงิน</div>';
+  return `<div class="copy">${b.name ? esc(b.name) + '<br>' : ''}${b.accountNo ? `เลขที่บัญชี <b>${esc(b.accountNo)}</b> <a href="#" onclick="copyText('${esc(b.accountNo)}');return false">คัดลอก</a><br>` : ''}${b.accountName ? 'ชื่อบัญชี ' + esc(b.accountName) + '<br>' : ''}${b.promptpay ? 'พร้อมเพย์ <b>' + esc(b.promptpay) + '</b>' : ''}</div>`;
+}
+function renderDone() {
+  const B = S.book, r = B.result;
+  if (B.admin) { $('#app').innerHTML = `<div class="card"><h1>บันทึกแล้ว ✓</h1><div class="kv"><span>เลขที่จอง</span><b>${esc(r.ref)}</b></div><div class="kv"><span>ยอดรวม</span><b>${money(r.total)}</b></div></div><button class="btn" onclick="S.book=null;go('admin')">กลับแดชบอร์ด</button>`; return; }
+  $('#app').innerHTML = `<div class="card" style="text-align:center"><div style="font-size:40px">🏕️</div><h1>รับการจองแล้ว</h1><p class="sub">กรุณาชำระเงินภายใน <b>${fmtDT(r.holdExpires)}</b> ไม่เช่นนั้นห้องจะถูกปล่อยว่าง</p>
+  <div class="big">${esc(r.ref)}</div><button class="btn sm sec" style="margin-top:8px" onclick="copyText('${esc(r.ref)}')">คัดลอกเลขที่จอง</button></div>
+  <div class="card"><div class="kv"><span>ยอดรวม</span><b>${money(r.total)}</b></div><div class="kv"><span>มัดจำขั้นต่ำ</span><b>${money(r.depositDue)}</b></div></div>
+  <h2>โอนเงินมาที่</h2>${bankBox()}
+  <div class="stack" style="margin-top:14px"><button class="btn" onclick="S.pay={ref:'${esc(r.ref)}'};go('pay')">แจ้งชำระเงิน</button><button class="btn sec" onclick="S.book=null;S.status.list=null;go('status')">ดูการจองของฉัน</button></div>`;
+}
+
+/* ===================== 2) ตรวจสอบการจอง ===================== */
+async function loadMine(force) {
+  if (!S.status.list || force) S.status.list = await api('myBookings');
+  return S.status.list;
+}
+async function pageStatus() {
+  $('#app').innerHTML = '<div id="msg"></div><h1>ตรวจสอบการจอง</h1><p class="sub">รายการจองของคุณ</p><div id="list"></div>';
+  const list = await run(() => loadMine(true), '#msg'); if (!list) return;
+  if (!list.length) { $('#list').innerHTML = '<div class="card muted" style="text-align:center">ยังไม่มีการจอง<br><br><button class="btn" onclick="go(\'book\')">จองห้องพัก</button></div>'; return; }
+  $('#list').innerHTML = list.map(b => `<div class="card" onclick="openMine('${b.id}')" style="cursor:pointer"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(b.ref)}</b><span class="chip ${b.status}">${STATUS_TH[b.status] || b.status}</span></div>
+  <div class="muted" style="font-size:13px;margin-top:4px">${fmtDate(b.checkIn)} → ${fmtDate(b.checkOut)} · ${b.nights} คืน · ${b.units.length} ห้อง</div>
+  <div style="display:flex;justify-content:space-between;margin-top:6px"><span>${money(b.total)}</span><span class="${b.balance > 0 && b.status !== 'CANCELLED' && b.status !== 'EXPIRED' ? '' : 'muted'}">ค้างชำระ ${money(['CANCELLED', 'EXPIRED'].includes(b.status) ? 0 : b.balance)}</span></div></div>`).join('');
+}
+function bookingDetailHtml(b) {
+  const unitNames = (b.units || []).map(u => esc(u.name || u)).join(', ');
+  let h = `<div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">${esc(b.ref)}</h3><span class="chip ${b.status}">${STATUS_TH[b.status] || b.status}</span></div>
+  <div style="margin-top:8px"><div class="kv"><span>เข้าพัก</span><b>${fmtDate(b.checkIn, 1)}</b></div><div class="kv"><span>ออก</span><b>${fmtDate(b.checkOut, 1)} (${b.nights} คืน)</b></div>
+  <div class="kv"><span>ห้อง</span><b>${unitNames}</b></div><div class="kv"><span>ผู้เข้าพัก</span><b>${b.adults} + ${b.children}</b></div>
+  <div class="kv"><span>ผู้จอง</span><b>${esc(b.name)} · ${esc(b.phone)}</b></div>
+  <div class="kv"><span>ยอดรวม</span><b>${money(b.total)}</b></div><div class="kv"><span>ชำระแล้ว</span><b>${money(b.paid)}</b></div>
+  <div class="kv"><span>ค้างชำระ</span><b>${money(['CANCELLED', 'EXPIRED'].includes(b.status) ? 0 : b.balance)}</b></div></div>`;
+  if (b.status === 'PENDING_PAYMENT') h += `<div class="warn" style="margin-top:10px">ชำระภายใน ${fmtDT(b.holdExpires)} มิฉะนั้นห้องจะถูกปล่อย</div>`;
+  if (b.payments && b.payments.length) h += `<h2>ประวัติการชำระ</h2>` + b.payments.map(p => `<div class="kv"><span>${fmtDT(p.createdAt)} · ${money(p.amount)}</span><span><span class="chip ${p.status}">${STATUS_TH[p.status] || p.status}</span>${p.reason ? `<br><small class="muted">${esc(p.reason)}</small>` : ''}</span></div>`).join('');
+  return h;
+}
+function openMine(id) {
+  const b = S.status.list.find(x => x.id === id); if (!b) return;
+  modal(bookingDetailHtml(b) + `<div class="stack" style="margin-top:14px">
+  ${b.canPay ? `<button class="btn" onclick="S.pay={ref:'${esc(b.ref)}'};go('pay')">แจ้งชำระเงิน</button>` : ''}
+  ${b.canReschedule ? `<button class="btn sec" onclick="S.resch={ref:'${esc(b.ref)}'};go('resch')">เลื่อนวันเข้าพัก</button>` : ''}
+  ${b.canCancel ? `<button class="btn sec" style="color:var(--bad);border-color:var(--bad)" onclick="cancelMine('${esc(b.ref)}')">ยกเลิกการจอง</button>` : ''}
+  <button class="btn sec" onclick="closeModal()">ปิด</button></div>`);
+}
+async function cancelMine(ref) {
+  if (!confirm('ยืนยันยกเลิกการจอง ' + ref + ' ?')) return;
+  const r = await run(() => api('cancelMyBooking', { ref })); if (!r) return;
+  closeModal(); S.status.list = null; pageStatus();
+}
+
+/* ===================== 3) แจ้งชำระเงิน ===================== */
+async function pagePay() {
+  $('#app').innerHTML = '<div id="msg"></div><h1>แจ้งชำระเงิน</h1><div id="body"></div>';
+  const list = await run(() => loadMine(true), '#msg'); if (!list) return;
+  const payable = list.filter(b => b.canPay);
+  const waiting = list.filter(b => b.payments.some(p => p.status === 'PENDING_REVIEW'));
+  if (!payable.length) {
+    $('#body').innerHTML = `<div class="card" style="text-align:center" class="muted">${waiting.length ? 'รายการของคุณอยู่ระหว่างตรวจสอบสลิป<br>จะแจ้งผลทาง LINE' : 'ไม่มีรายการที่ต้องชำระเงิน'}<br><br><button class="btn sec" onclick="go('status')">ดูการจองของฉัน</button></div>`; return;
+  }
+  const P = S.pay; if (!P.ref || !payable.find(b => b.ref === P.ref)) P.ref = payable[0].ref;
+  const b = payable.find(x => x.ref === P.ref);
+  const full = b.balance, dep = b.depositDue > 0 && b.depositDue < full ? b.depositDue : null;
+  P.amount = P.amount && P.amount <= full ? P.amount : (dep || full);
+  const now = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 16);
+  $('#body').innerHTML = `${payable.length > 1 ? `<label>เลือกรายการจอง</label><select id="pr" onchange="S.pay={ref:this.value};pagePay()">${payable.map(x => `<option value="${esc(x.ref)}" ${x.ref === P.ref ? 'selected' : ''}>${esc(x.ref)} · ${fmtDate(x.checkIn)}</option>`).join('')}</select>` : ''}
+  <div class="card" style="margin-top:10px"><div class="kv"><span>เลขที่จอง</span><b>${esc(b.ref)}</b></div><div class="kv"><span>เข้าพัก</span><b>${fmtDate(b.checkIn)} · ${b.nights} คืน</b></div><div class="kv"><span>ยอดรวม</span><b>${money(b.total)}</b></div><div class="kv"><span>ค้างชำระ</span><b class="big">${money(full)}</b></div></div>
+  <h2>โอนเงินมาที่</h2>${bankBox()}
+  <h2>ยอดที่โอน</h2><div class="stack">
+  ${dep ? `<label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${dep}" ${P.amount === dep ? 'checked' : ''}> มัดจำ ${money(dep)}</label>` : ''}
+  <label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${full}" ${P.amount === full ? 'checked' : ''}> ชำระเต็ม ${money(full)}</label></div>
+  <label>วัน-เวลาที่โอน</label><input type="datetime-local" id="pt" value="${now}">
+  <label>แนบสลิป</label><input type="file" id="ps" accept="image/*">
+  <div id="pv"></div><div id="msg2" style="margin-top:10px"></div>
+  <div style="margin-top:12px"><button class="btn" onclick="submitPay('${esc(b.ref)}')">ส่งแจ้งชำระเงิน</button></div>`;
+  document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value); });
+  $('#ps').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { P.slip = await compress(f); $('#pv').innerHTML = `<img class="slip" src="data:image/jpeg;base64,${P.slip}" style="max-height:260px">`; }
+    catch (err) { P.slip = null; $('#pv').innerHTML = toast('อ่านรูปไม่สำเร็จ กรุณาใช้ไฟล์ jpg/png'); }
+  };
+  P.slip = null;
+}
+function compress(file, max = 1400) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); };
+    img.src = url;
+  });
+}
+async function submitPay(ref) {
+  const P = S.pay;
+  if (!P.slip) { $('#msg2').innerHTML = toast('กรุณาแนบรูปสลิป'); return; }
+  const r = await run(() => api('submitPayment', { ref, amount: P.amount, transferAt: $('#pt').value, slip: { mime: 'image/jpeg', base64: P.slip } }), '#msg2');
+  if (!r) return;
+  S.pay = {}; S.status.list = null;
+  $('#app').innerHTML = `<div class="card" style="text-align:center"><div style="font-size:40px">✅</div><h1>ส่งสลิปแล้ว</h1><p class="sub">ที่พักจะตรวจสอบและแจ้งผลทาง LINE</p></div><button class="btn" onclick="go('status')">ดูการจองของฉัน</button>`;
+}
+
+/* ===================== 4) เลื่อนวันเข้าพัก ===================== */
+async function pageResch() {
+  $('#app').innerHTML = '<div id="msg"></div><h1>เลื่อนวันเข้าพัก</h1><div id="body"></div>';
+  const list = await run(() => loadMine(true), '#msg'); if (!list) return;
+  const ok = list.filter(b => b.canReschedule);
+  const c = S.cfg;
+  if (!ok.length) { $('#body').innerHTML = `<div class="card muted">ไม่มีการจองที่เลื่อนวันเองได้<br><small>เลื่อนได้เมื่อเหลืออีก ${c.minRescheduleDays} วันขึ้นไปก่อนเช็คอิน และไม่เกิน ${c.maxReschedules} ครั้ง${c.contactPhone ? ' · ติดต่อ ' + esc(c.contactPhone) : ''}</small></div>`; return; }
+  const R = S.resch; if (!R.ref || !ok.find(b => b.ref === R.ref)) R.ref = ok[0].ref;
+  const b = ok.find(x => x.ref === R.ref); R.plan = null;
+  const t = todayStr(), min = addDays(t, 1);
+  $('#body').innerHTML = `${ok.length > 1 ? `<label>เลือกรายการจอง</label><select onchange="S.resch={ref:this.value};pageResch()">${ok.map(x => `<option value="${esc(x.ref)}" ${x.ref === R.ref ? 'selected' : ''}>${esc(x.ref)} · ${fmtDate(x.checkIn)}</option>`).join('')}</select>` : ''}
+  <div class="card" style="margin-top:10px"><div class="kv"><span>เดิม</span><b>${fmtDate(b.checkIn, 1)} → ${fmtDate(b.checkOut, 1)}</b></div><div class="kv"><span>จำนวน</span><b>${b.nights} คืน · ${b.units.map(u => esc(u.name)).join(', ')}</b></div><div class="kv"><span>เลื่อนไปแล้ว</span><b>${b.rescheduleCount}/${c.maxReschedules} ครั้ง</b></div></div>
+  <label>วันเช็คอินใหม่</label><input type="date" id="rn" min="${min}" value="${addDays(b.checkIn, 7)}">
+  <p class="muted" style="font-size:12px">จำนวนคืนและห้องเดิม · ราคาอาจเปลี่ยนตามวัน (ธรรมดา/วันหยุด)</p>
+  <button class="btn" onclick="previewResch('${esc(b.ref)}')">ตรวจสอบห้องว่าง</button><div id="plan" style="margin-top:12px"></div>`;
+}
+async function previewResch(ref) {
+  const nd = $('#rn').value; if (!nd) return;
+  const p = await run(() => api('previewReschedule', { ref, newCheckIn: nd }), '#plan'); if (!p) return;
+  S.resch.plan = p;
+  if (!p.ok) { $('#plan').innerHTML = toast('ห้อง ' + p.conflicts.join(', ') + ' ไม่ว่างในวันที่เลือก กรุณาเลือกวันอื่น'); return; }
+  $('#plan').innerHTML = `<div class="card"><h3>วันใหม่ ${fmtDate(p.newCheckIn, 1)} → ${fmtDate(p.newCheckOut, 1)}</h3>
+  <div class="kv"><span>ยอดเดิม</span><b>${money(p.oldTotal)}</b></div><div class="kv"><span>ยอดใหม่</span><b>${money(p.newTotal)}</b></div>
+  <div class="kv"><span>ส่วนต่าง</span><b>${p.diff > 0 ? '+' : ''}${money(p.diff)}</b></div>
+  ${p.balanceAfter > 0 ? `<div class="warn" style="margin-top:8px">หลังเลื่อนมียอดค้างชำระ ${money(p.balanceAfter)} — แจ้งชำระได้ที่เมนู "แจ้งชำระเงิน"</div>` : ''}
+  ${p.refundDue > 0 ? `<div class="warn" style="margin-top:8px">ยอดใหม่ต่ำกว่าที่ชำระแล้ว ที่พักจะติดต่อเรื่องคืนเงิน ${money(p.refundDue)}</div>` : ''}</div>
+  <button class="btn" onclick="confirmResch('${esc(ref)}')">ยืนยันเลื่อนวัน</button>`;
+}
+async function confirmResch(ref) {
+  const r = await run(() => api('reschedule', { ref, newCheckIn: S.resch.plan.newCheckIn }), '#plan'); if (!r) return;
+  S.status.list = null; S.resch = {};
+  $('#app').innerHTML = `<div class="card" style="text-align:center"><div style="font-size:40px">📅</div><h1>เลื่อนวันเรียบร้อย</h1><p class="sub">${fmtDate(r.booking.checkIn, 1)} → ${fmtDate(r.booking.checkOut, 1)}</p></div><button class="btn" onclick="go('status')">ดูการจองของฉัน</button>`;
+}
+
+/* ===================== 5) แดชบอร์ดแอดมิน ===================== */
+async function pageAdmin() {
+  if (!S.me.isAdmin) return go('book');
+  const A = S.admin;
+  $('#app').innerHTML = '<div id="msg"></div><div id="adm"></div>';
+  await loadDash();
+}
+async function loadDash() {
+  const A = S.admin;
+  const d = await run(() => api('adminDashboard', { month: A.month }), '#msg'); if (!d) return;
+  A.data = d; A.month = d.month; renderAdmin();
+}
+function renderAdmin() {
+  const A = S.admin, d = A.data, k = d.kpi;
+  const [y, m] = d.month.split('-').map(Number);
+  const tabs = [['cal', 'ปฏิทินการจอง'], ['pay', `รอตรวจสลิป${k.pendingReview ? ' (' + k.pendingReview + ')' : ''}`], ['list', 'รายการจองทั้งหมด'], ['today', 'วันนี้']];
+  $('#adm').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h1>แดชบอร์ด · ${esc(S.cfg.campName)}</h1><p class="sub">ภาพรวมการจองและปฏิทินห้องพัก</p></div>
+  <button class="btn sm" onclick="go('book',{admin:true})">+ จองแทนลูกค้า</button></div>
+  <div class="kpis"><div class="card"><div class="muted">อัตราเข้าพัก ${TH_MONTH_FULL[m - 1]}</div><div class="big">${(k.occupancy * 100).toFixed(1)}%</div><div class="muted" style="font-size:12px">${k.occupiedNights} จาก ${k.unitCount * d.days.length} ห้อง-คืน</div></div>
+  <div class="card"><div class="muted">รับชำระแล้ว (เช็คอินเดือนนี้)</div><div class="big">${money(k.paid)}</div><div class="muted" style="font-size:12px">${k.bookingCount} การจอง · ยืนยัน ${k.confirmed}</div></div>
+  <div class="card"><div class="muted">ยอดค้างชำระ</div><div class="big">${money(k.outstanding)}</div><div class="muted" style="font-size:12px">รอชำระ ${k.awaitingPayment} รายการ</div></div>
+  <div class="card" style="${k.pendingReview ? 'border-color:var(--blue)' : ''}"><div class="muted">รอตรวจสลิป</div><div class="big">${k.pendingReview}</div><div class="muted" style="font-size:12px">เข้าพักอยู่ตอนนี้ ${d.inHouse} การจอง</div></div></div>
+  <div class="tabs">${tabs.map(([id, t]) => `<button class="${A.tab === id ? 'on' : ''}" onclick="S.admin.tab='${id}';renderAdmin()">${t}</button>`).join('')}</div>
+  <div id="tab"></div>`;
+  ({ cal: tabCal, pay: tabPay, list: tabList, today: tabToday })[A.tab]();
+}
+function monthShift(n) {
+  const A = S.admin, [y, m] = A.month.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1));
+  A.month = t.getUTCFullYear() + '-' + pad(t.getUTCMonth() + 1); loadDash();
+}
+function tabCal() {
+  const A = S.admin, d = A.data, [y, m] = d.month.split('-').map(Number);
+  let h = `<div class="mnav"><button class="btn sm sec" onclick="monthShift(-1)">‹ ก่อนหน้า</button><b>${TH_MONTH_FULL[m - 1]} ${y + 543}</b><button class="btn sm sec" onclick="monthShift(1)">ถัดไป ›</button></div>
+  <div class="legend"><span><i style="background:var(--ok)"></i>ยืนยันแล้ว</span><span><i style="background:var(--blue)"></i>รอตรวจสลิป</span><span><i style="background:var(--amber)"></i>รอชำระเงิน</span><span><i style="background:#fdf9f0;border:1px solid var(--line)"></i>วันหยุด (ศ.–ส.)</span><span>ช่องว่าง = ว่าง · แตะช่องสีเพื่อดูรายละเอียด</span></div>
+  <div class="cal"><table><thead><tr><th class="u">ห้อง</th>${d.days.map(x => `<th class="${x.dow === 5 || x.dow === 6 ? 'we' : ''} ${x.date === d.today ? 'today' : ''}">${Number(x.date.slice(8))}<br><span style="font-weight:400">${TH_DOW[x.dow]}</span></th>`).join('')}</tr></thead><tbody>`;
+  let zone = '';
+  d.units.forEach(u => {
+    if (u.zone !== zone) { zone = u.zone; h += `<tr class="zh"><td colspan="${d.days.length + 1}">โซน ${esc(zone)} · รองรับ ${u.capacity} คน/หลัง</td></tr>`; }
+    h += `<tr><td class="u">${esc(u.name)}</td>`;
+    (d.grid[u.unitId] || []).forEach((bi, i) => {
+      const x = d.days[i], we = x.dow === 5 || x.dow === 6 ? 'we' : '';
+      if (bi < 0) h += `<td class="${we}"></td>`;
+      else { const b = d.bookings[bi]; h += `<td class="c ${b.status} ${b.checkIn === x.date ? 's' : ''}" title="${esc(b.name)}" onclick="openAdminBooking(${bi})">${b.checkIn === x.date ? `<span style="color:#fff;font-size:10px">${esc(b.name.slice(0, 3))}</span>` : ''}</td>`; }
+    });
+    h += '</tr>';
+  });
+  h += `</tbody><tfoot><tr><td class="u">ว่าง</td>${d.days.map(x => `<td>${x.available}</td>`).join('')}</tr><tr><td class="u">เข้า/ออก</td>${d.days.map(x => `<td style="font-weight:400;font-size:10px">${x.arrivals || x.departures ? x.arrivals + '/' + x.departures : ''}</td>`).join('')}</tr></tfoot></table></div>`;
+  $('#tab').innerHTML = h;
+}
+function tabPay() {
+  const p = S.admin.data.pending;
+  $('#tab').innerHTML = p.length ? p.map(x => `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.ref)}</b><span class="chip PENDING_REVIEW">รอตรวจ</span></div>
+  <div class="kv"><span>ผู้จอง</span><b>${esc(x.name)} · ${esc(x.phone)}</b></div><div class="kv"><span>ยอดที่แจ้ง</span><b class="big">${money(x.amount)}</b></div>
+  <div class="kv"><span>ยอดรวม / ชำระแล้ว</span><b>${money(x.total)} / ${money(x.paid)}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div>
+  <div class="row" style="margin-top:10px"><button class="btn sec sm" onclick="viewSlip('${x.paymentId}')">ดูสลิป</button><button class="btn sm" onclick="review('${x.paymentId}','APPROVE')">อนุมัติ</button><button class="btn bad sm" onclick="review('${x.paymentId}','REJECT')">ปฏิเสธ</button></div></div>`).join('') : '<div class="card muted" style="text-align:center">ไม่มีรายการรอตรวจสลิป 🎉</div>';
+}
+async function viewSlip(pid) {
+  const s = await run(() => api('adminSlip', { paymentId: pid })); if (!s) return;
+  modal(`<h3>สลิปการโอน</h3><img class="slip" src="data:${s.mime};base64,${s.base64}"><button class="btn sec" onclick="closeModal()">ปิด</button>`);
+}
+async function review(pid, decision) {
+  let reason = '';
+  if (decision === 'REJECT') { reason = prompt('เหตุผลที่ปฏิเสธ (จะแจ้งลูกค้า)'); if (!reason) return; }
+  else if (!confirm('ยืนยันว่าได้รับยอดเงินตามสลิปแล้ว?')) return;
+  const r = await run(() => api('adminReviewPayment', { paymentId: pid, decision, reason })); if (!r) return;
+  closeModal(); await loadDash();
+}
+function tabToday() {
+  const d = S.admin.data;
+  const lst = (t, a, kind) => `<h2>${t} (${a.length})</h2>` + (a.length ? a.map(b => `<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(b.name)}</b><span class="chip ${b.status}">${STATUS_TH[b.status]}</span></div><div class="muted" style="font-size:13px">${esc(b.ref)} · ห้อง ${b.units.map(esc).join(', ')} · ${esc(b.phone)}</div>${b.balance > 0 ? `<div class="warn" style="margin-top:6px">ค้างชำระ ${money(b.balance)}</div>` : ''}</div>`).join('') : '<div class="card muted">ไม่มี</div>');
+  $('#tab').innerHTML = `<div class="row" style="align-items:flex-start"><div>${lst('เช็คอินวันนี้', d.arrivalsToday)}</div><div>${lst('เช็คเอาท์วันนี้', d.departuresToday)}</div></div>`;
+}
+async function tabList() {
+  const A = S.admin;
+  $('#tab').innerHTML = `<div class="row"><input id="aq" placeholder="ค้นหา เลขที่จอง / ชื่อ / เบอร์" value="${esc(A.q)}"><select id="as"><option value="">ทุกสถานะ</option>${Object.keys(STATUS_TH).slice(0, 5).map(s => `<option value="${s}" ${A.st === s ? 'selected' : ''}>${STATUS_TH[s]}</option>`).join('')}</select><button class="btn sm" style="flex:0 0 auto" onclick="S.admin.q=$('#aq').value;S.admin.st=$('#as').value;tabList()">ค้นหา</button></div><div id="bl" style="margin-top:10px"></div>`;
+  const list = await run(() => api('adminBookings', { q: A.q, status: A.st }), '#msg'); if (!list) return;
+  $('#bl').innerHTML = list.length ? `<div class="card" style="padding:4px 10px;overflow:auto"><table class="list"><tr><th>เลขที่จอง</th><th>ผู้จอง</th><th>เข้าพัก</th><th>ยอด</th><th>สถานะ</th></tr>${list.map(b => `<tr style="cursor:pointer" onclick="openAdminBookingRef('${esc(b.ref)}')"><td>${esc(b.ref)}</td><td>${esc(b.name)}<br><small class="muted">${esc(b.phone)}</small></td><td>${fmtDate(b.checkIn)}<br><small class="muted">${b.nights} คืน</small></td><td>${money(b.total)}<br><small class="muted">ค้าง ${money(['CANCELLED', 'EXPIRED'].includes(b.status) ? 0 : b.balance)}</small></td><td><span class="chip ${b.status}">${STATUS_TH[b.status]}</span></td></tr>`).join('')}</table></div>` : '<div class="card muted">ไม่พบรายการ</div>';
+}
+function openAdminBooking(i) { openAdminBookingRef(S.admin.data.bookings[i].ref); }
+async function openAdminBookingRef(ref) {
+  const b = await run(() => api('getBooking', { ref })); if (!b) return;
+  const pend = b.payments.filter(p => p.status === 'PENDING_REVIEW');
+  const act = !['CANCELLED', 'EXPIRED'].includes(b.status);
+  modal(bookingDetailHtml(b) + `<div class="kv"><span>ที่มา</span><b>${esc(b.source)}</b></div>${b.note ? `<div class="kv"><span>หมายเหตุ</span><b>${esc(b.note)}</b></div>` : ''}
+  <div class="stack" style="margin-top:14px">
+  ${b.payments.filter(p => p.hasSlip).map(p => `<button class="btn sec" onclick="viewSlip('${p.id}')">ดูสลิป ${money(p.amount)} (${STATUS_TH[p.status]})</button>`).join('')}
+  ${pend.map(p => `<div class="row"><button class="btn sm" onclick="review('${p.id}','APPROVE')">อนุมัติ ${money(p.amount)}</button><button class="btn bad sm" onclick="review('${p.id}','REJECT')">ปฏิเสธ</button></div>`).join('')}
+  ${act ? `<button class="btn sec" onclick="adminMove('${esc(b.ref)}','${b.checkIn}')">เลื่อนวันเข้าพัก (แอดมิน)</button><button class="btn sec" style="color:var(--bad);border-color:var(--bad)" onclick="adminCancel('${esc(b.ref)}')">ยกเลิกการจอง</button>` : ''}
+  <button class="btn sec" onclick="closeModal()">ปิด</button></div>`);
+}
+async function adminMove(ref, cur) {
+  const nd = prompt('วันเช็คอินใหม่ (YYYY-MM-DD) — จำนวนคืนเท่าเดิม', cur); if (!nd || nd === cur) return;
+  const r = await run(() => api('adminReschedule', { ref, newCheckIn: nd })); if (!r) return;
+  closeModal(); await loadDash();
+}
+async function adminCancel(ref) {
+  const reason = prompt('เหตุผลการยกเลิก (จะแจ้งลูกค้า)'); if (reason === null) return;
+  if (!confirm('ยืนยันยกเลิก ' + ref + ' ? ห้องจะถูกปล่อยว่างทันที')) return;
+  const r = await run(() => api('adminCancelBooking', { ref, reason })); if (!r) return;
+  closeModal(); await loadDash();
+}
+
+init();
+</script>
+</body>
+</html>
