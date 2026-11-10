@@ -109,8 +109,14 @@ function toast(msg, kind) { return `<div class="${kind || 'err'}" style="margin:
 
 async function api(action, params) {
   const idToken = liff.getIDToken();
-  const res = await fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, params: params || {}, idToken }) });
-  const j = await res.json();
+  let j;
+  try {
+    const res = await fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, params: params || {}, idToken }) });
+    j = await res.json();
+  } catch (x) {
+    const e = new Error('เชื่อมต่อระบบหลังบ้านไม่ได้ (Apps Script) — ตรวจว่า Deploy เป็น New version แล้ว, ตั้ง Who has access = Anyone, และในโปรเจกต์มีฟังก์ชัน doPost จากไฟล์ Code.gs ล่าสุด [' + x.message + ']');
+    e.code = 'NETWORK'; throw e;
+  }
   if (!j.ok) {
     const e = new Error(j.message || 'เกิดข้อผิดพลาด'); e.code = j.code; e.extra = j.extra;
     if (j.code === 'UNAUTHENTICATED') { liff.logout(); liff.login({ redirectUri: location.href }); }
@@ -140,7 +146,7 @@ const ICON = {
 async function init() {
   try {
     if (CONFIG.LIFF_ID.startsWith('YOUR_')) throw new Error('ยังไม่ได้ตั้งค่า LIFF_ID / API_URL ในไฟล์ index.html');
-    await liff.init({ liffId: CONFIG.LIFF_ID });
+    try { await liff.init({ liffId: CONFIG.LIFF_ID }); } catch (x) { throw new Error('เริ่ม LIFF ไม่สำเร็จ: ' + x.message + ' (ตรวจ LIFF ID / Endpoint URL ใน LINE Developers)'); }
     if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
     S.me = await api('me');
     S.cfg = S.me.config;
