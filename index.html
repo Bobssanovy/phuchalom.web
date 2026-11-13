@@ -294,6 +294,7 @@ async function loadAvail(errSel) {
   const B = S.book;
   const r = await run(() => api('availability', { checkIn: B.checkIn, checkOut: B.checkOut, allowPast: B.admin }), errSel);
   if (!r) return false;
+  (r.units || []).forEach(u => { if (!u.status) u.status = u.available === false ? 'BOOKED' : 'FREE'; });
   B.avail = r; return true;
 }
 async function stepMap() {
