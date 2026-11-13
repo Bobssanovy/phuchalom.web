@@ -83,16 +83,16 @@ h2.ttl{margin:0 0 2px;font-size:18px}
 .nights{background:#eef4e8;border-radius:10px;padding:9px 12px;margin:12px 0;text-align:center;color:var(--forest-d)}
 .zchips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
 .zchip{border:0;border-radius:99px;padding:5px 13px;font:inherit;font-size:12.5px;font-weight:600;color:#fff;background:var(--c,var(--forest));cursor:pointer}
-.mapbox{position:relative}
-.mapscroll{overflow:auto;max-height:min(78vh,680px);border-radius:14px;border:1px solid var(--line);background:#cfe3c3;-webkit-overflow-scrolling:touch;cursor:grab}
+.mapbox{position:relative;margin:0 -16px}
+.mapscroll{overflow:hidden;border-radius:0;border:0;background:#cfe3c3;-webkit-overflow-scrolling:touch;cursor:grab}
 .mapscroll.grab{cursor:grabbing;user-select:none}
 .map{position:relative;--mw:720px;aspect-ratio:1400/788;background:#bcd9a8}
 .map img{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none;pointer-events:none}
-.pin{position:absolute;transform:translate(-50%,-50%);width:calc(var(--mw)*.027);height:calc(var(--mw)*.027);min-width:14px;min-height:14px;border-radius:50%;border:1.5px solid #fff;color:#fff;font-family:inherit;font-weight:700;font-size:max(7px,calc(var(--mw)*.0098));padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.5);letter-spacing:-.3px}
+.pin{position:absolute;transform:translate(-50%,-50%);width:calc(var(--mw)*.033);height:calc(var(--mw)*.033);min-width:15px;min-height:15px;letter-spacing:-.4px;border-radius:50%;border:1.5px solid #fff;color:#fff;font-family:inherit;font-weight:700;font-size:max(6.5px,calc(var(--mw)*.0128));padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.5);letter-spacing:-.3px}
 .pin.FREE,.chipu.FREE,.lg.FREE::before{background:#4fae3c}.pin.HOLD,.chipu.HOLD,.lg.HOLD::before{background:#f0a21c}
 .pin.BOOKED,.chipu.BOOKED,.lg.BOOKED::before{background:#d9423c}.pin.CLOSED,.chipu.CLOSED,.lg.CLOSED::before{background:#9aa39c}
-.pin.sel,.chipu.sel{background:#16c24a!important;border-color:#fff;transform:translate(-50%,-50%) scale(1.3);box-shadow:0 0 0 3px #fff,0 0 0 6px #ffd23f,0 0 18px 8px rgba(255,210,63,.85);z-index:6;animation:selpulse 1.4s ease-in-out infinite}
-@keyframes selpulse{50%{box-shadow:0 0 0 3px #fff,0 0 0 9px rgba(255,210,63,.6),0 0 24px 12px rgba(255,210,63,.55)}}
+.pin.sel,.chipu.sel{background:#16c24a!important;border-color:#fff;transform:translate(-50%,-50%) scale(1.25);box-shadow:0 0 0 2px #fff,0 0 0 4px #ffd23f,0 0 10px 5px rgba(255,210,63,.8);z-index:6;animation:selpulse 1.4s ease-in-out infinite}
+@keyframes selpulse{50%{box-shadow:0 0 0 2px #fff,0 0 0 6px rgba(255,210,63,.6),0 0 14px 7px rgba(255,210,63,.5)}}
 .pin.sel::after{content:'✓';position:absolute;right:-6px;top:-8px;width:calc(var(--mw)*.0135);height:calc(var(--mw)*.0135);min-width:12px;min-height:12px;border-radius:50%;background:#2e8b57;border:1.5px solid #fff;color:#fff;font-size:max(8px,calc(var(--mw)*.0085));display:flex;align-items:center;justify-content:center;line-height:1}
 .mapctl{position:absolute;right:10px;bottom:12px;display:flex;flex-direction:column;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);overflow:hidden}
 .mapctl button{width:38px;height:38px;border:0;background:#fff;font-size:22px;line-height:1;cursor:pointer;color:var(--ink)}.mapctl button+button{border-top:1px solid var(--line)}
@@ -220,7 +220,7 @@ const MAP_IMG = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD//gAPTGF2YzYz
 const MAP_PINS = {"บ้าน 1":[64.3,12.4],"บ้าน 2":[75.4,13.4],"บ้านพัก 1":[64.3,12.4],"บ้านพัก 2":[75.4,13.4],"A1":[55.36,19.92],"A2":[58.5,20.05],"A3":[61.57,20.3],"A4":[64.79,20.69],"A5":[71.79,21.32],"A6":[75.0,21.45],"A7":[78.36,21.83],"A8":[81.5,22.08],"A9":[84.86,22.34],"A10":[88.29,22.72],"B1":[54.0,29.44],"B2":[57.36,29.82],"B3":[60.64,30.08],"B4":[64.07,30.2],"B5":[72.21,31.35],"B6":[75.5,31.6],"B7":[79.21,31.98],"B8":[82.79,32.49],"B9":[86.43,32.74],"B10":[89.79,32.99],"C1":[51.79,39.85],"C2":[55.14,40.23],"C3":[58.57,40.74],"C4":[62.0,41.12],"C5":[71.93,42.51],"C6":[75.57,42.89],"C7":[79.14,43.27],"C8":[82.79,43.78],"C9":[86.36,44.29],"C10":[90.21,44.16],"D1":[42.64,69.16],"D2":[48.29,69.42],"D3":[53.86,69.42],"D4":[41.0,73.86],"D5":[46.79,73.98],"D6":[52.5,74.24],"D7":[38.93,78.81],"D8":[45.07,79.06],"D9":[51.57,79.31],"D11":[37.21,83.63],"D10":[43.5,83.88],"D12":[50.29,84.26],"D13":[35.21,88.83],"D14":[41.93,89.21],"D15":[49.29,89.59]};
 const ZONE_VIEW = { 'บ้านพัก': { x: .70, y: .13, z: 2.3 }, A: { x: .715, y: .22, z: 2.3 }, B: { x: .715, y: .31, z: 2.3 }, C: { x: .715, y: .42, z: 2.3 }, D: { x: .42, y: .84, z: 3.4 } };
 const zoneLbl = z => (String(z).length === 1 ? 'ลาน ' : '') + z;
-const pinLbl = u => { const m = /^บ้าน(?:พัก)?\s*(\d+)/.exec(u.name) || /^[A-Za-z]+(\d+)$/.exec(u.name); return m ? m[1] : u.name; };
+const pinLbl = u => { if (/^[A-Za-z]+\d+$/.test(u.name)) return u.name; const m = /^บ้าน(?:พัก)?\s*(\d+)/.exec(u.name) || /^[A-Za-z]+(\d+)$/.exec(u.name); return m ? m[1] : u.name; };
 const ZONE_CLR = {'บ้านพัก':'#8a5a2b', A: '#2b6fd1', B: '#e8871e', C: '#7b3fb3', D: '#9c5a22' };
 const ST_TXT = { FREE: 'ว่าง', HOLD: 'รอชำระ', BOOKED: 'จองแล้ว', CLOSED: 'ปิดปรับปรุง' };
 const BOOK_STEPS = ['เลือกวันเข้าพัก', 'จำนวนผู้เข้าพัก', 'เลือกตำแหน่งที่พัก', 'ยืนยัน'];
@@ -320,7 +320,7 @@ function renderMapStep(notice) {
   bookFrame(`<div class="card"><h2 class="ttl">⛺ เลือกตำแหน่งที่พัก</h2><p class="sub">แตะผังเพื่อเลือกที่พักที่ต้องการ (กดอีกครั้งเพื่อยกเลิก) · ${a.nights} คืน</p>
   ${notice ? `<div class="warn" style="margin-bottom:10px">${esc(notice)}</div>` : ''}
   <div class="mapbox"><div class="mapscroll" id="mapscroll"><div class="map" id="map"><img src="${MAP_IMG}" alt="แผนผังลานกางเต็นท์" draggable="false">${pins.join('')}</div></div>
-  <div class="mapctl"><button onclick="zoomMap(1.35)" aria-label="ขยาย">+</button><button onclick="zoomMap(1/1.35)" aria-label="ย่อ">−</button></div><div class="maptoast" id="maptoast"></div></div>
+  <div class="maptoast" id="maptoast"></div></div>
   <div class="legend2"><span class="lg FREE">ว่าง</span><span class="lg HOLD">รอชำระ</span><span class="lg BOOKED">จองแล้ว</span><span class="lg CLOSED">ปิดปรับปรุง</span></div>
   ${off.length ? `<div class="offmap"><div class="muted" style="font-size:12px;margin-bottom:6px">ที่พักอื่นที่ไม่ได้แสดงบนผัง</div>${off.join('')}</div>` : ''}</div>
   <div id="msg"></div><div id="selpanel"></div>`);
