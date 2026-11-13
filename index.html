@@ -31,6 +31,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--moss);border-col
 .kv{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px dashed var(--line)}.kv:last-child{border:0}
 .kv b{text-align:right}.big{font-size:22px;font-weight:700}
 .muted{color:var(--mute)}.warn{background:#fff4dc;border:1px solid #f0d28a;color:#7a5a00;padding:10px 12px;border-radius:10px;font-size:13px}
+.ok{background:#e6f4e8;border:1px solid #a9d5b0;color:#1f5a2b;padding:10px 12px;border-radius:10px;font-size:13px}
 .err{background:#fdeceb;border:1px solid #f1b8b3;color:#8e2a20;padding:10px 12px;border-radius:10px;font-size:13px}
 .okbox{background:#e8f5ee;border:1px solid #b6dcc6;color:#1d5a3a;padding:10px 12px;border-radius:10px;font-size:13px}
 .stepper{display:flex;align-items:center;gap:10px}.stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:20px}
@@ -453,6 +454,7 @@ async function loadMine(force) {
 async function pageStatus() {
   $('#app').innerHTML = '<div id="msg"></div><h1>ตรวจสอบการจอง</h1><p class="sub">รายการจองของคุณ</p><div id="list"></div>';
   const list = await run(() => loadMine(true), '#msg'); if (!list) return;
+  if (S.flash) { $('#msg').innerHTML = toast(S.flash, 'ok'); S.flash = ''; }
   if (!list.length) { $('#list').innerHTML = '<div class="card muted" style="text-align:center">ยังไม่มีการจอง<br><br><button class="btn" onclick="go(\'book\')">จองห้องพัก</button></div>'; return; }
   $('#list').innerHTML = list.map(b => `<div class="card" onclick="openMine('${b.id}')" style="cursor:pointer"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(b.ref)}</b><span class="chip ${b.status}">${STATUS_TH[b.status] || b.status}</span></div>
   <div class="muted" style="font-size:13px;margin-top:4px">${fmtDate(b.checkIn)} → ${fmtDate(b.checkOut)} · ${b.nights} คืน · ${b.units.length} ห้อง</div>
@@ -505,16 +507,27 @@ async function pagePay() {
   ${dep ? `<label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${dep}" ${P.amount === dep ? 'checked' : ''}> มัดจำ ${money(dep)}</label>` : ''}
   <label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${full}" ${P.amount === full ? 'checked' : ''}> ชำระเต็ม ${money(full)}</label></div>
   <label>วัน-เวลาที่โอน</label><input type="datetime-local" id="pt" value="${now}">
-  <label>แนบสลิป</label><input type="file" id="ps" accept="image/*">
-  <div id="pv"></div><div id="msg2" style="margin-top:10px"></div>
+  <h2 style="margin-top:18px">กรุณาแนบหลักฐานการชำระเงิน</h2>
+  <label class="btn sec" for="ps" style="display:block;text-align:center;cursor:pointer;margin:0">📎 แนบรูปสลิป</label>
+  <input type="file" id="ps" accept="image/*" style="display:none">
+  <div id="pv"></div>
+  <label>ยอดเงินที่โอนตามสลิป (บาท)</label><input type="number" inputmode="decimal" id="pa" placeholder="กรอกยอดตามสลิป">
+  <div id="pchk" style="margin-top:8px"></div><div id="msg2" style="margin-top:10px"></div>
   <div style="margin-top:12px"><button class="btn" onclick="submitPay('${esc(b.ref)}')">ส่งแจ้งชำระเงิน</button></div>`;
-  document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value); });
+  document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value); checkAmt(); });
+  $('#pa').oninput = checkAmt;
   $('#ps').onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
     try { P.slip = await compress(f); $('#pv').innerHTML = `<img class="slip" src="data:image/jpeg;base64,${P.slip}" style="max-height:260px">`; }
     catch (err) { P.slip = null; $('#pv').innerHTML = toast('อ่านรูปไม่สำเร็จ กรุณาใช้ไฟล์ jpg/png'); }
   };
   P.slip = null;
+}
+function checkAmt() {
+  const v = $('#pa').value, el = $('#pchk'); if (v === '') { el.innerHTML = ''; return false; }
+  const ok = Math.abs(Number(v) - S.pay.amount) < 0.005;
+  el.innerHTML = ok ? `<div class="ok" style="margin:0">✓ ยอดตรงกับยอดเรียกเก็บ ${money(S.pay.amount)}</div>` : `<div class="err" style="margin:0">ยอดไม่ตรงกับยอดเรียกเก็บ ${money(S.pay.amount)} กรุณาตรวจสอบยอดโอนหรือเลือกรายการยอดที่โอนให้ถูกต้อง</div>`;
+  return ok;
 }
 function compress(file, max = 1400) {
   return new Promise((res, rej) => {
@@ -531,11 +544,14 @@ function compress(file, max = 1400) {
 }
 async function submitPay(ref) {
   const P = S.pay;
-  if (!P.slip) { $('#msg2').innerHTML = toast('กรุณาแนบรูปสลิป'); return; }
+  if (!P.slip) { $('#msg2').innerHTML = toast('กรุณาแนบหลักฐานการชำระเงิน (รูปสลิป)'); return; }
+  if ($('#pa').value === '') { $('#msg2').innerHTML = toast('กรุณากรอกยอดเงินที่โอนตามสลิป'); return; }
+  if (!checkAmt()) { $('#msg2').innerHTML = toast('ยอดที่โอนไม่ตรงกับยอดเรียกเก็บ ไม่สามารถส่งได้'); return; }
   const r = await run(() => api('submitPayment', { ref, amount: P.amount, transferAt: $('#pt').value, slip: { mime: 'image/jpeg', base64: P.slip } }), '#msg2');
   if (!r) return;
   S.pay = {}; S.status.list = null;
-  $('#app').innerHTML = `<div class="card" style="text-align:center"><div style="font-size:40px">✅</div><h1>ส่งสลิปแล้ว</h1><p class="sub">ที่พักจะตรวจสอบและแจ้งผลทาง LINE</p></div><button class="btn" onclick="go('status')">ดูการจองของฉัน</button>`;
+  S.flash = '✅ ส่งหลักฐานการชำระเงินเรียบร้อย ยอดตรงกับยอดเรียกเก็บ ที่พักจะตรวจสอบและแจ้งผลทาง LINE';
+  go('status');
 }
 
 /* ===================== 4) เลื่อนวันเข้าพัก ===================== */
