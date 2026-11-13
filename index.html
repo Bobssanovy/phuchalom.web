@@ -537,7 +537,8 @@ async function pagePay() {
   const payable = list.filter(b => b.canPay);
   const waiting = list.filter(b => b.payments.some(p => p.status === 'PENDING_REVIEW'));
   if (!payable.length) {
-    $('#body').innerHTML = `<div class="card" style="text-align:center" class="muted">${waiting.length ? 'รายการของคุณอยู่ระหว่างตรวจสอบสลิป<br>จะแจ้งผลทาง LINE' : 'ไม่มีรายการที่ต้องชำระเงิน'}<br><br><button class="btn sec" onclick="go('status')">ดูการจองของฉัน</button></div>`; return;
+    const why = x => x.status === 'EXPIRED' ? 'หมดเวลาชำระเงินแล้ว (ที่พักถูกปล่อยคืน) กรุณาจองใหม่' : x.status === 'CANCELLED' ? 'การจองนี้ถูกยกเลิกแล้ว' : x.payments.some(q => q.status === 'PENDING_REVIEW') ? 'ส่งสลิปแล้ว อยู่ระหว่างตรวจสอบ จะแจ้งผลทาง LINE' : x.balance <= 0 ? 'ชำระครบแล้ว ไม่มียอดค้าง' : 'ไม่สามารถแจ้งชำระได้ในขณะนี้';
+    $('#body').innerHTML = list.length ? `<p class="sub">ตอนนี้ไม่มีรายการที่ต้องแนบสลิป — สถานะการจองของคุณ</p>` + list.slice(0, 6).map(x => `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.ref)}</b><span class="chip ${x.status}">${STATUS_TH[x.status] || x.status}</span></div><div class="muted" style="font-size:13px;margin:4px 0">${fmtDate(x.checkIn)} → ${fmtDate(x.checkOut)} · ${money(x.total)}</div><div style="font-size:13.5px">${why(x)}</div></div>`).join('') + `<div class="stack"><button class="btn" onclick="go('book')">จองห้องพัก</button><button class="btn sec" onclick="go('status')">ดูการจองของฉัน</button></div>` : `<div class="card" style="text-align:center"><div class="muted">ยังไม่มีการจอง</div><br><button class="btn" onclick="go('book')">จองห้องพัก</button></div>`; return;
   }
   const P = S.pay; if (!P.ref || !payable.find(b => b.ref === P.ref)) P.ref = payable[0].ref;
   const b = payable.find(x => x.ref === P.ref);
