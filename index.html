@@ -84,6 +84,18 @@ h2.ttl{margin:0 0 2px;font-size:18px}
 .nights{background:#eef4e8;border-radius:10px;padding:9px 12px;margin:12px 0;text-align:center;color:var(--forest-d)}
 .zchips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
 .zchip{border:0;border-radius:99px;padding:5px 13px;font:inherit;font-size:12.5px;font-weight:600;color:#fff;background:var(--c,var(--forest));cursor:pointer}
+.calhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 2px 10px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.calhead span{display:block;font-size:12px;color:var(--mute)}.calhead b{font-size:15px}.calhead .arrow{font-size:20px;color:var(--ink)}
+.calwrap{max-height:min(58vh,470px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.calmt{text-align:center;font-weight:700;margin:16px 0 6px}
+.caldow,.calgrid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.caldow span{font-size:13px;color:var(--mute);padding:6px 0}
+.cd{border:0;background:transparent;font:inherit;font-size:16px;height:44px;color:var(--ink);cursor:pointer;position:relative;padding:0;z-index:0}
+.cd.off{color:#c5cbc6;cursor:default}.cd.today{font-weight:800;text-decoration:underline}
+.cd.r{background:#dcebdd}.cd.s,.cd.e{color:#fff;font-weight:700}
+.cd.s::before,.cd.e::before{content:'';position:absolute;left:50%;top:50%;width:42px;height:42px;transform:translate(-50%,-50%);border-radius:50%;background:var(--forest,#2f5d3a);z-index:-1}
+.cd.hasr{background:linear-gradient(90deg,transparent 50%,#dcebdd 50%)}.cd.e{background:linear-gradient(90deg,#dcebdd 50%,transparent 50%)}
+.cd:disabled{pointer-events:none}
 .mapbox{position:relative;margin:0 -16px}
 .mapscroll{overflow:hidden;border-radius:0;border:0;background:#cfe3c3;-webkit-overflow-scrolling:touch;cursor:grab}
 .mapscroll.grab{cursor:grabbing;user-select:none}
@@ -112,6 +124,7 @@ h2.ttl{margin:0 0 2px;font-size:18px}
 </head>
 <body>
 <div id="app"><div class="card" style="text-align:center;margin-top:30vh"><div class="spin" style="margin:0 auto 10px"></div>กำลังเข้าสู่ระบบ…</div></div>
+<div id="ver" style="text-align:center;font-size:10px;color:#9aa39c;padding:4px 0 74px"></div>
 <nav id="nav" class="hide"></nav>
 <div class="overlay" id="busy"><div class="spin"></div></div>
 <div id="modalRoot"></div>
@@ -125,6 +138,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
+const WEB_VERSION = 'v10-cal-2026-11-13';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -187,6 +201,7 @@ async function init() {
     try { await liff.init({ liffId: CONFIG.LIFF_ID }); } catch (x) { throw new Error('เริ่ม LIFF ไม่สำเร็จ: ' + x.message + ' (ตรวจ LIFF ID / Endpoint URL ใน LINE Developers)'); }
     if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
     S.me = await api('me');
+    { const v = $('#ver'); if (v) v.textContent = 'หน้าเว็บ ' + WEB_VERSION + ' · หลังบ้าน ' + (S.me.version || 'เก่า (ยังไม่ได้อัปเดต)'); }
     S.cfg = S.me.config;
     const p = getPage();
     S.page = (p === 'admin' && !S.me.isAdmin) ? 'book' : p;
@@ -251,20 +266,49 @@ function bookFrame(inner) {
 
 /* ----- ขั้นที่ 1: วันที่ ----- */
 function stepDates() {
-  const B = S.book, t = todayStr(), n = nightsBetween(B.checkIn, B.checkOut);
-  bookFrame(`<div class="card"><h2 class="ttl">📅 เลือกวันเข้าพัก</h2><p class="sub">วันเช็คเอาท์จะไม่นับเป็นคืนที่จอง</p>
-  <div class="row"><div><label>วันเช็คอิน</label><input type="date" id="ci" value="${B.checkIn}" ${B.admin ? '' : `min="${t}"`}></div>
-  <div><label>วันเช็คเอาท์</label><input type="date" id="co" value="${B.checkOut}" min="${addDays(B.checkIn, 1)}"></div></div>
-  <div class="nights" id="nts">เข้าพัก <b>${n}</b> คืน</div><div id="msg"></div>
-  <button class="btn" onclick="datesNext()">ถัดไป →</button></div>`);
-  const ci = $('#ci'), co = $('#co'), nts = $('#nts');
-  const show = () => { const k = B.checkIn && B.checkOut ? nightsBetween(B.checkIn, B.checkOut) : 0; nts.innerHTML = k > 0 ? `เข้าพัก <b>${k}</b> คืน` : 'กรุณาเลือกวันที่ให้ถูกต้อง'; };
-  ci.onchange = () => {
-    B.checkIn = ci.value; if (!B.checkIn) return show();
-    if (!B.checkOut || nightsBetween(B.checkIn, B.checkOut) < 1) { B.checkOut = addDays(B.checkIn, 1); co.value = B.checkOut; }
-    co.min = addDays(B.checkIn, 1); show();
-  };
-  co.onchange = () => { B.checkOut = co.value; show(); };
+  const B = S.book;
+  bookFrame(`<div class="card"><h2 class="ttl">📅 เลือกวันเข้าพัก</h2><p class="sub">แตะวันเช็คอิน แล้วแตะวันเช็คเอาท์ · วันเช็คเอาท์ไม่นับเป็นคืนที่จอง</p>
+  <div class="calhead"><div><span>เช็คอิน</span><b id="chi"></b></div><div class="arrow">→</div><div><span>เช็คเอาท์</span><b id="cho"></b></div></div>
+  <div class="calwrap" id="calwrap"></div><div id="msg" style="margin-top:10px"></div>
+  <button class="btn" id="calok" onclick="datesNext()" style="margin-top:10px">ตกลง</button></div>`);
+  renderCal(true);
+}
+function renderCal(first) {
+  const B = S.book, t = todayStr(), w = $('#calwrap'); if (!w) return;
+  const keep = w.scrollTop, [ty, tm] = t.split('-').map(Number), months = [];
+  for (let i = 0; i < 8; i++) { const mm = tm - 1 + i; months.push([ty + Math.floor(mm / 12), mm % 12 + 1]); }
+  const dow = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+  const ci = B.checkIn, co = B.checkOut;
+  w.innerHTML = months.map(([y, m]) => {
+    const first1 = new Date(Date.UTC(y, m - 1, 1)).getUTCDay(), dim = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    let cells = '';
+    for (let i = 0; i < first1; i++) cells += '<span></span>';
+    for (let d = 1; d <= dim; d++) {
+      const ymd = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const past = !B.admin && ymd < t;
+      let c = 'cd';
+      if (past) c += ' off';
+      if (ymd === t) c += ' today';
+      if (ci && ymd === ci) c += ' s' + (co ? ' hasr' : '');
+      else if (co && ymd === co) c += ' e';
+      else if (ci && co && ymd > ci && ymd < co) c += ' r';
+      cells += `<button class="${c}" ${past ? 'disabled' : ''} onclick="calPick('${ymd}')">${d}</button>`;
+    }
+    return `<div class="calm" data-m="${y}-${m}"><div class="calmt">${TH_MONTH_FULL[m - 1]} ${y + 543}</div><div class="caldow">${dow.map(x => `<span>${x}</span>`).join('')}</div><div class="calgrid">${cells}</div></div>`;
+  }).join('');
+  if (first) { const sel = w.querySelector('.s'); w.scrollTop = sel ? Math.max(0, sel.closest('.calm').offsetTop - w.offsetTop - 4) : 0; } else w.scrollTop = keep;
+  const k = ci && co ? nightsBetween(ci, co) : 0;
+  $('#chi').textContent = ci ? fmtDate(ci, 1) : '-'; $('#cho').textContent = co ? fmtDate(co, 1) : 'เลือกวันเช็คเอาท์';
+  const ok = $('#calok'); if (ok) { ok.textContent = k > 0 ? `ตกลง (${k} คืน)` : 'ตกลง'; ok.disabled = !(k > 0); }
+}
+function calPick(ymd) {
+  const B = S.book; $('#msg').innerHTML = '';
+  if (!B.checkIn || B.checkOut || ymd <= B.checkIn) { B.checkIn = ymd; B.checkOut = null; }
+  else {
+    if (nightsBetween(B.checkIn, ymd) > S.cfg.maxNights) { $('#msg').innerHTML = toast('จองได้สูงสุด ' + S.cfg.maxNights + ' คืนต่อครั้ง'); return; }
+    B.checkOut = ymd;
+  }
+  renderCal(false);
 }
 function datesNext() {
   const B = S.book, c = S.cfg, msg = $('#msg');
@@ -511,23 +555,16 @@ async function pagePay() {
   <label class="btn sec" for="ps" style="display:block;text-align:center;cursor:pointer;margin:0">📎 แนบรูปสลิป</label>
   <input type="file" id="ps" accept="image/*" style="display:none">
   <div id="pv"></div>
-  <label>ยอดเงินที่โอนตามสลิป (บาท)</label><input type="number" inputmode="decimal" id="pa" placeholder="กรอกยอดตามสลิป">
-  <div id="pchk" style="margin-top:8px"></div><div id="msg2" style="margin-top:10px"></div>
+  <p class="muted" style="font-size:12.5px;margin:8px 0 0">เมื่อกดส่ง ระบบจะอ่านยอดเงินจากสลิปและตรวจว่าตรงกับยอดเรียกเก็บหรือไม่</p>
+  <div id="msg2" style="margin-top:10px"></div>
   <div style="margin-top:12px"><button class="btn" onclick="submitPay('${esc(b.ref)}')">ส่งแจ้งชำระเงิน</button></div>`;
-  document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value); checkAmt(); });
-  $('#pa').oninput = checkAmt;
+  document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value);  });
   $('#ps').onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
     try { P.slip = await compress(f); $('#pv').innerHTML = `<img class="slip" src="data:image/jpeg;base64,${P.slip}" style="max-height:260px">`; }
     catch (err) { P.slip = null; $('#pv').innerHTML = toast('อ่านรูปไม่สำเร็จ กรุณาใช้ไฟล์ jpg/png'); }
   };
   P.slip = null;
-}
-function checkAmt() {
-  const v = $('#pa').value, el = $('#pchk'); if (v === '') { el.innerHTML = ''; return false; }
-  const ok = Math.abs(Number(v) - S.pay.amount) < 0.005;
-  el.innerHTML = ok ? `<div class="ok" style="margin:0">✓ ยอดตรงกับยอดเรียกเก็บ ${money(S.pay.amount)}</div>` : `<div class="err" style="margin:0">ยอดไม่ตรงกับยอดเรียกเก็บ ${money(S.pay.amount)} กรุณาตรวจสอบยอดโอนหรือเลือกรายการยอดที่โอนให้ถูกต้อง</div>`;
-  return ok;
 }
 function compress(file, max = 1400) {
   return new Promise((res, rej) => {
@@ -545,12 +582,11 @@ function compress(file, max = 1400) {
 async function submitPay(ref) {
   const P = S.pay;
   if (!P.slip) { $('#msg2').innerHTML = toast('กรุณาแนบหลักฐานการชำระเงิน (รูปสลิป)'); return; }
-  if ($('#pa').value === '') { $('#msg2').innerHTML = toast('กรุณากรอกยอดเงินที่โอนตามสลิป'); return; }
-  if (!checkAmt()) { $('#msg2').innerHTML = toast('ยอดที่โอนไม่ตรงกับยอดเรียกเก็บ ไม่สามารถส่งได้'); return; }
+  $('#msg2').innerHTML = '<div class="muted" style="text-align:center">⏳ กำลังตรวจสอบยอดเงินจากสลิป…</div>';
   const r = await run(() => api('submitPayment', { ref, amount: P.amount, transferAt: $('#pt').value, slip: { mime: 'image/jpeg', base64: P.slip } }), '#msg2');
   if (!r) return;
   S.pay = {}; S.status.list = null;
-  S.flash = '✅ ส่งหลักฐานการชำระเงินเรียบร้อย ยอดตรงกับยอดเรียกเก็บ ที่พักจะตรวจสอบและแจ้งผลทาง LINE';
+  S.flash = r.ocr === 'MATCH' ? '✅ ส่งหลักฐานการชำระเงินเรียบร้อย ระบบตรวจแล้วว่ายอดในสลิปตรงกับยอดเรียกเก็บ ที่พักจะตรวจสอบและแจ้งผลทาง LINE' : '✅ ส่งหลักฐานการชำระเงินเรียบร้อย ระบบอ่านยอดจากสลิปไม่ชัด ที่พักจะตรวจสอบสลิปให้และแจ้งผลทาง LINE';
   go('status');
 }
 
@@ -641,7 +677,7 @@ function tabPay() {
   const p = S.admin.data.pending;
   $('#tab').innerHTML = p.length ? p.map(x => `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.ref)}</b><span class="chip PENDING_REVIEW">รอตรวจ</span></div>
   <div class="kv"><span>ผู้จอง</span><b>${esc(x.name)} · ${esc(x.phone)}</b></div><div class="kv"><span>ยอดที่แจ้ง</span><b class="big">${money(x.amount)}</b></div>
-  <div class="kv"><span>ยอดรวม / ชำระแล้ว</span><b>${money(x.total)} / ${money(x.paid)}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div>
+  <div class="kv"><span>ยอดรวม / ชำระแล้ว</span><b>${money(x.total)} / ${money(x.paid)}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div><div class="kv"><span>ผลอ่านสลิป</span><b>${x.ocr === 'OCR:MATCH' ? '✅ ยอดตรง' : x.ocr === 'OCR:MISMATCH' ? '⚠️ ยอดไม่ตรง' : x.ocr === 'OCR:UNREADABLE' ? '❓ อ่านไม่ได้ ตรวจเอง' : '-'}</b></div>
   <div class="row" style="margin-top:10px"><button class="btn sec sm" onclick="viewSlip('${x.paymentId}')">ดูสลิป</button><button class="btn sm" onclick="review('${x.paymentId}','APPROVE')">อนุมัติ</button><button class="btn bad sm" onclick="review('${x.paymentId}','REJECT')">ปฏิเสธ</button></div></div>`).join('') : '<div class="card muted" style="text-align:center">ไม่มีรายการรอตรวจสลิป 🎉</div>';
 }
 async function viewSlip(pid) {
