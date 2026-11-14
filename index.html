@@ -141,7 +141,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v16-admin-roles-2026-11-14';
+const WEB_VERSION = 'v17-admin-apply-2026-11-14';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -217,7 +217,7 @@ function getPage() {
   const q = new URLSearchParams(location.search);
   let p = q.get('page');
   if (!p) { const st = q.get('liff.state'); const m = st && /page=([a-z]+)/.exec(decodeURIComponent(st)); if (m) p = m[1]; }
-  return ['book', 'status', 'pay', 'resch', 'reschedule', 'admin'].includes(p) ? (p === 'reschedule' ? 'resch' : p) : 'book';
+  return ['book', 'status', 'pay', 'resch', 'reschedule', 'admin', 'applyadmin'].includes(p) ? (p === 'reschedule' ? 'resch' : p) : 'book';
 }
 function renderNav() {
   const items = [['book', 'จองห้อง'], ['status', 'ตรวจสอบ'], ['pay', 'แจ้งชำระ'], ['resch', 'เลื่อนวัน']];
@@ -230,7 +230,17 @@ function go(page, opts) {
   S.page = page; closeModal(); window.scrollTo(0, 0);
   $('#app').classList.toggle('wide', page === 'admin');
   renderNav();
-  ({ book: pageBook, status: pageStatus, pay: pagePay, resch: pageResch, admin: pageAdmin })[page](opts);
+  ({ book: pageBook, status: pageStatus, pay: pagePay, resch: pageResch, admin: pageAdmin, applyadmin: pageApplyAdmin })[page](opts);
+}
+
+async function pageApplyAdmin() {
+  if (S.me.isAdmin) { $('#app').innerHTML = '<div class="card" style="text-align:center"><h1>บัญชีนี้เป็น Admin แล้ว</h1><button class="btn" onclick="go(\'admin\')">เปิดแดชบอร์ด</button></div>'; return; }
+  $('#app').innerHTML = `<div class="card" style="max-width:520px;margin:30px auto"><h1>สมัครเป็น Admin</h1><p class="sub">ระบบอ่านบัญชี LINE ที่ล็อกอินอยู่อัตโนมัติ กรุณากรอกเฉพาะชื่อที่ต้องการให้แสดงในรายการ</p>
+  <div class="kv"><span>บัญชี LINE</span><b>${esc(S.me.name)}</b></div><label>ชื่อที่แสดง</label><input id="apn" maxlength="60" value="${esc(S.me.name || '')}" placeholder="เช่น คุณแอน"><div id="apmsg"></div><button class="btn" onclick="submitAdminApply()">ส่งคำขอ</button></div>`;
+}
+async function submitAdminApply() {
+  const name = $('#apn').value.trim(), r = await run(() => api('applyAdmin', { name }), '#apmsg'); if (!r) return;
+  $('#app').innerHTML = `<div class="card" style="max-width:520px;margin:30px auto;text-align:center"><div style="font-size:42px">✅</div><h1>ส่งคำขอแล้ว</h1><p>แจ้งรหัสนี้ให้ Super Admin ตรวจสอบ</p><div class="big" style="letter-spacing:2px">${esc(r.code)}</div><p class="muted">เมื่อได้รับอนุมัติ ให้ปิดแล้วเปิดระบบใหม่ เมนูแดชบอร์ดจะปรากฏโดยอัตโนมัติ</p></div>`;
 }
 
 /* ===================== 1) จองห้องพัก (4 ขั้นตอน + ผังแผนที่) ===================== */
@@ -796,9 +806,10 @@ async function openAdminBookingRef(ref) {
 function adminActionText(a) { return ({ BOOKING_CREATED_BY_ADMIN:'รับจองโดย', PAYMENT_APPROVED:'อนุมัติสลิปโดย', PAYMENT_REJECTED:'ปฏิเสธสลิปโดย', BOOKING_RESCHEDULED_BY_ADMIN:'เลื่อนวันโดย', BOOKING_CANCELLED_BY_ADMIN:'ยกเลิกโดย' })[a] || a; }
 async function tabAdmins() {
   if (S.me.role !== 'SUPER_ADMIN') return;
-  const list = await run(() => api('adminList'), '#msg'); if (!list) return;
+  const data = await run(() => Promise.all([api('adminList'), api('adminRequests')]), '#msg'); if (!data) return;
+  const list = data[0], requests = data[1];
   const active = list.filter(x => x.active);
-  $('#tab').innerHTML = `<div class="card"><h2>จัดการผู้ดูแล (${active.length}/6)</h2><p class="muted">Super Admin 1 คน และ Admin ทั่วไปได้สูงสุด 5 คน</p>
+  $('#tab').innerHTML = `${requests.length ? `<div class="card" style="border-color:var(--blue)"><h2>คำขอสมัคร Admin (${requests.length})</h2>${requests.map(r => `<div class="kv" style="align-items:center"><span><b>${esc(r.name)}</b><br><small class="muted">LINE: ${esc(r.lineName || '-')} · รหัส ${esc(r.code)}<br>${fmtDT(r.created)}</small></span><span style="display:flex;gap:6px"><button class="btn sm" onclick="reviewAdminRequest('${esc(r.requestId)}','APPROVE')">อนุมัติ</button><button class="btn bad sm" onclick="reviewAdminRequest('${esc(r.requestId)}','REJECT')">ปฏิเสธ</button></span></div>`).join('')}</div>` : ''}<div class="card"><h2>จัดการผู้ดูแล (${active.length}/6)</h2><p class="muted">Super Admin 1 คน และ Admin ทั่วไปได้สูงสุด 5 คน</p>
   ${active.map(a => `<div class="kv" style="align-items:center"><span><b>${esc(a.name || 'ยังไม่ได้ตั้งชื่อ')}</b><br><small class="muted">${esc(a.userId)} · ${a.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}</small></span>${a.role === 'SUPER_ADMIN' ? '<b class="chip CONFIRMED">เจ้าของระบบ</b>' : `<button class="btn bad sm" style="flex:0 0 auto" onclick="removeAdmin('${esc(a.userId)}','${esc(a.name)}')">นำออก</button>`}</div>`).join('')}
   </div><div class="card"><h3>เพิ่มหรือแก้ไข Admin</h3><label>ชื่อที่แสดงในรายการ</label><input id="adn" maxlength="60" placeholder="เช่น คุณแอน"><label>LINE User ID</label><input id="adi" placeholder="Uxxxxxxxx..." autocomplete="off"><button class="btn" onclick="saveAdmin()">บันทึก Admin</button></div>`;
 }
@@ -809,6 +820,10 @@ async function saveAdmin() {
 async function removeAdmin(userId, name) {
   if (!confirm('นำ ' + (name || userId) + ' ออกจากการเป็น Admin?')) return;
   const r = await run(() => api('adminRemove', { userId }), '#msg'); if (r) tabAdmins();
+}
+async function reviewAdminRequest(requestId, decision) {
+  if (decision === 'REJECT' && !confirm('ปฏิเสธคำขอนี้?')) return;
+  const r = await run(() => api('adminReviewRequest', { requestId, decision }), '#msg'); if (r) tabAdmins();
 }
 async function adminMove(ref, cur) {
   const nd = prompt('วันเช็คอินใหม่ (YYYY-MM-DD) — จำนวนคืนเท่าเดิม', cur); if (!nd || nd === cur) return;
