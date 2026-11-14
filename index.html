@@ -138,7 +138,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v11-datefix-2026-11-13';
+const WEB_VERSION = 'v12-slipcheck-2026-11-14';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -678,7 +678,7 @@ function tabPay() {
   const p = S.admin.data.pending;
   $('#tab').innerHTML = p.length ? p.map(x => `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.ref)}</b><span class="chip PENDING_REVIEW">รอตรวจ</span></div>
   <div class="kv"><span>ผู้จอง</span><b>${esc(x.name)} · ${esc(x.phone)}</b></div><div class="kv"><span>ยอดที่แจ้ง</span><b class="big">${money(x.amount)}</b></div>
-  <div class="kv"><span>ยอดรวม / ชำระแล้ว</span><b>${money(x.total)} / ${money(x.paid)}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div><div class="kv"><span>ผลอ่านสลิป</span><b>${x.ocr === 'OCR:MATCH' ? '✅ ยอดตรง' : x.ocr === 'OCR:MISMATCH' ? '⚠️ ยอดไม่ตรง' : x.ocr === 'OCR:UNREADABLE' ? '❓ อ่านไม่ได้ ตรวจเอง' : '-'}</b></div>
+  <div class="kv"><span>ยอดรวม / ชำระแล้ว</span><b>${money(x.total)} / ${money(x.paid)}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div><div class="kv"><span>ผลอ่านสลิป</span><b>${x.ocr === 'OCR:MATCH' ? '✅ ยอดตรง' : x.ocr === 'OCR:MISMATCH' ? '⚠️ ยอดไม่ตรง' : x.ocr === 'OCR:UNREADABLE' ? '❓ อ่านไม่ได้ ตรวจเอง' : '-'}</b></div>${(x.flags || []).includes('RCV') ? '<div class="err" style="margin:6px 0">⚠️ ไม่พบเลขบัญชีหรือชื่อผู้รับของที่พักในสลิป ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}${(x.flags || []).includes('TIME') ? '<div class="err" style="margin:6px 0">⚠️ เวลาโอนในสลิปไม่สมเหตุสมผล (ก่อนเวลาจอง/อยู่ในอนาคต) ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}
   <div class="row" style="margin-top:10px"><button class="btn sec sm" onclick="viewSlip('${x.paymentId}')">ดูสลิป</button><button class="btn sm" onclick="review('${x.paymentId}','APPROVE')">อนุมัติ</button><button class="btn bad sm" onclick="review('${x.paymentId}','REJECT')">ปฏิเสธ</button></div></div>`).join('') : '<div class="card muted" style="text-align:center">ไม่มีรายการรอตรวจสลิป 🎉</div>';
 }
 async function viewSlip(pid) {
