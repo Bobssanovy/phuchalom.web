@@ -141,7 +141,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v14-promptpay-2026-11-14';
+const WEB_VERSION = 'v15-paybtn-2026-11-14';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -490,7 +490,7 @@ function renderDone() {
   <div class="big">${esc(r.ref)}</div><button class="btn sm sec" style="margin-top:8px" onclick="copyText('${esc(r.ref)}')">คัดลอกเลขที่จอง</button></div>
   <div class="card"><div class="kv"><span>ยอดรวม</span><b>${money(r.total)}</b></div><div class="kv"><span>มัดจำขั้นต่ำ</span><b>${money(r.depositDue)}</b></div></div>
   <h2>โอนเงินมาที่</h2>${bankBox()}
-  <div class="stack" style="margin-top:14px"><button class="btn" onclick="S.pay={ref:'${esc(r.ref)}'};go('pay')">แจ้งชำระเงิน</button><button class="btn sec" onclick="S.book=null;S.status.list=null;go('status')">ดูการจองของฉัน</button></div>`;
+  <div class="stack" style="margin-top:14px"><button class="btn" onclick="S.pay={ref:'${esc(r.ref)}',mode:'qr'};go('pay')">💳 ชำระเงิน</button><button class="btn sec" onclick="S.pay={ref:'${esc(r.ref)}'};go('pay')">แจ้งชำระเงิน (แนบสลิป)</button><button class="btn sec" onclick="S.book=null;S.status.list=null;go('status')">ดูการจองของฉัน</button></div>`;
 }
 
 /* ===================== 2) ตรวจสอบการจอง ===================== */
@@ -522,7 +522,7 @@ function bookingDetailHtml(b) {
 function openMine(id) {
   const b = S.status.list.find(x => x.id === id); if (!b) return;
   modal(bookingDetailHtml(b) + `<div class="stack" style="margin-top:14px">
-  ${b.canPay ? `<button class="btn" onclick="S.pay={ref:'${esc(b.ref)}'};go('pay')">แจ้งชำระเงิน</button>` : ''}
+  ${b.canPay ? `<button class="btn" onclick="S.pay={ref:'${esc(b.ref)}',mode:'qr'};go('pay')">💳 ชำระเงิน</button><button class="btn sec" onclick="S.pay={ref:'${esc(b.ref)}'};go('pay')">แจ้งชำระเงิน (แนบสลิป)</button>` : ''}
   ${b.canReschedule ? `<button class="btn sec" onclick="S.resch={ref:'${esc(b.ref)}'};go('resch')">เลื่อนวันเข้าพัก</button>` : ''}
   ${b.canCancel ? `<button class="btn sec" style="color:var(--bad);border-color:var(--bad)" onclick="cancelMine('${esc(b.ref)}')">ยกเลิกการจอง</button>` : ''}
   <button class="btn sec" onclick="closeModal()">ปิด</button></div>`);
@@ -554,18 +554,32 @@ async function pagePay() {
       <div class="kv"><span>ยอดรวม</span><b>${money(x.total)}</b></div><div class="kv"><span>ค้างชำระ</span><b class="big">${money(x.balance)}</b></div>
       ${dep ? `<div class="kv"><span>มัดจำขั้นต่ำ</span><b>${money(dep)}</b></div>` : ''}
       ${left !== null ? `<div class="muted" style="font-size:12.5px;margin-top:4px">⏳ เหลือเวลาชำระ ${left >= 60 ? Math.floor(left / 60) + ' ชม. ' + (left % 60) + ' นาที' : left + ' นาที'}</div>` : ''}
-      <button class="btn" style="margin-top:10px" onclick="S.pay={ref:'${esc(x.ref)}'};pagePay()">แจ้งชำระเงิน</button></div>`;
+      <div class="stack" style="margin-top:10px"><button class="btn" onclick="S.pay={ref:'${esc(x.ref)}',mode:'qr'};pagePay()">💳 ชำระเงิน</button><button class="btn sec" onclick="S.pay={ref:'${esc(x.ref)}'};pagePay()">แจ้งชำระเงิน (แนบสลิป)</button></div></div>`;
     }).join('');
     return;
   }
   const b = payable.find(x => x.ref === P.ref);
   const full = b.balance, dep = b.depositDue > 0 && b.depositDue < full ? b.depositDue : null;
   P.amount = P.amount && P.amount <= full ? P.amount : (dep || full);
+  if (P.mode === 'qr') {
+    const h = $('#app h1'); if (h) h.textContent = 'ชำระเงิน';
+    const b0 = S.me.config.bank, hasPP = !!(b0.promptpay && ppPayload(b0.promptpay, 1));
+    $('#body').innerHTML = `${payable.length > 1 ? `<button class="btn sm sec" style="margin-bottom:8px" onclick="S.pay={};pagePay()">‹ กลับไปรายการรอชำระ</button>` : ''}
+    <div class="card"><div class="kv"><span>เลขที่จอง</span><b>${esc(b.ref)}</b></div><div class="kv"><span>เข้าพัก</span><b>${fmtDate(b.checkIn)} · ${b.nights} คืน</b></div><div class="kv"><span>ยอดรวม</span><b>${money(b.total)}</b></div><div class="kv"><span>ค้างชำระ</span><b class="big">${money(full)}</b></div></div>
+    <h2>เลือกยอดที่จะชำระ</h2><div class="stack">
+    ${dep ? `<label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${dep}" ${P.amount === dep ? 'checked' : ''}> มัดจำ ${money(dep)}</label>` : ''}
+    <label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${full}" ${P.amount === full ? 'checked' : ''}> ชำระเต็ม ${money(full)}</label></div>
+    <div id="ppbox">${hasPP ? '' : `<div class="err" style="margin-top:12px">${S.me.isAdmin ? 'ผู้ดูแล: ยังไม่ได้ตั้งค่า PROMPTPAY_ID ในชีต Settings จึงยังไม่มี QR — ' : ''}ขณะนี้ชำระผ่านการโอนเข้าบัญชีด้านล่าง</div>`}</div>
+    <h2>โอนเงินมาที่</h2>${bankBox()}
+    <div class="stack" style="margin-top:14px"><button class="btn" onclick="S.pay.mode='';pagePay()">โอนแล้ว → แจ้งชำระเงิน (แนบสลิป)</button></div>`;
+    document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value); drawPP(S.pay.amount); });
+    if (hasPP) drawPP(P.amount);
+    return;
+  }
   const now = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 16);
   $('#body').innerHTML = `${payable.length > 1 ? `<button class="btn sm sec" style="margin-bottom:8px" onclick="S.pay={};pagePay()">‹ กลับไปรายการรอชำระ</button>` : ''}
   <div class="card" style="margin-top:10px"><div class="kv"><span>เลขที่จอง</span><b>${esc(b.ref)}</b></div><div class="kv"><span>เข้าพัก</span><b>${fmtDate(b.checkIn)} · ${b.nights} คืน</b></div><div class="kv"><span>ยอดรวม</span><b>${money(b.total)}</b></div><div class="kv"><span>ค้างชำระ</span><b class="big">${money(full)}</b></div></div>
   <h2>โอนเงินมาที่</h2>${bankBox()}
-  <div id="ppbox"></div>
   <h2>ยอดที่โอน</h2><div class="stack">
   ${dep ? `<label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${dep}" ${P.amount === dep ? 'checked' : ''}> มัดจำ ${money(dep)}</label>` : ''}
   <label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${full}" ${P.amount === full ? 'checked' : ''}> ชำระเต็ม ${money(full)}</label></div>
@@ -577,8 +591,7 @@ async function pagePay() {
   <p class="muted" style="font-size:12.5px;margin:8px 0 0">เมื่อกดส่ง ระบบจะอ่านยอดเงินจากสลิปและตรวจว่าตรงกับยอดเรียกเก็บหรือไม่</p>
   <div id="msg2" style="margin-top:10px"></div>
   <div style="margin-top:12px"><button class="btn" onclick="submitPay('${esc(b.ref)}')">ส่งแจ้งชำระเงิน</button></div>`;
-  document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value); drawPP(S.pay.amount); });
-  drawPP(P.amount);
+  document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value); });
   $('#ps').onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
     try { P.slip = await compress(f); $('#pv').innerHTML = `<img class="slip" src="data:image/jpeg;base64,${P.slip}" style="max-height:260px">`; }
