@@ -138,7 +138,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v12-slipcheck-2026-11-14';
+const WEB_VERSION = 'v13-paylist-2026-11-14';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -220,7 +220,7 @@ function renderNav() {
   const items = [['book', 'จองห้อง'], ['status', 'ตรวจสอบ'], ['pay', 'แจ้งชำระ'], ['resch', 'เลื่อนวัน']];
   if (S.me.isAdmin) items.push(['admin', 'แดชบอร์ด']);
   const n = $('#nav'); n.classList.remove('hide');
-  n.innerHTML = items.map(([k, t]) => `<button class="${S.page === k ? 'on' : ''}" onclick="go('${k}')">${ICON[k]}<span>${t}</span></button>`).join('');
+  n.innerHTML = items.map(([k, t]) => `<button class="${S.page === k ? 'on' : ''}" onclick="${k === 'pay' ? 'S.pay={};' : ''}go('${k}')">${ICON[k]}<span>${t}</span></button>`).join('');
 }
 function go(page, opts) {
   if (page === 'book' && !(opts && opts.admin) && S.book && S.book.step === 5) S.book = null;
@@ -540,12 +540,26 @@ async function pagePay() {
     const why = x => x.status === 'EXPIRED' ? 'หมดเวลาชำระเงินแล้ว (ที่พักถูกปล่อยคืน) กรุณาจองใหม่' : x.status === 'CANCELLED' ? 'การจองนี้ถูกยกเลิกแล้ว' : x.payments.some(q => q.status === 'PENDING_REVIEW') ? 'ส่งสลิปแล้ว อยู่ระหว่างตรวจสอบ จะแจ้งผลทาง LINE' : x.balance <= 0 ? 'ชำระครบแล้ว ไม่มียอดค้าง' : 'ไม่สามารถแจ้งชำระได้ในขณะนี้';
     $('#body').innerHTML = list.length ? `<p class="sub">ตอนนี้ไม่มีรายการที่ต้องแนบสลิป — สถานะการจองของคุณ</p>` + list.slice(0, 6).map(x => `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.ref)}</b><span class="chip ${x.status}">${STATUS_TH[x.status] || x.status}</span></div><div class="muted" style="font-size:13px;margin:4px 0">${fmtDate(x.checkIn)} → ${fmtDate(x.checkOut)} · ${money(x.total)}</div><div style="font-size:13.5px">${why(x)}</div></div>`).join('') + `<div class="stack"><button class="btn" onclick="go('book')">จองห้องพัก</button><button class="btn sec" onclick="go('status')">ดูการจองของฉัน</button></div>` : `<div class="card" style="text-align:center"><div class="muted">ยังไม่มีการจอง</div><br><button class="btn" onclick="go('book')">จองห้องพัก</button></div>`; return;
   }
-  const P = S.pay; if (!P.ref || !payable.find(b => b.ref === P.ref)) P.ref = payable[0].ref;
+  const P = S.pay;
+  if (!P.ref || !payable.find(b => b.ref === P.ref)) {
+    P.ref = null;
+    $('#body').innerHTML = `<p class="sub">รายการจองที่รอชำระเงิน (${payable.length} รายการ)</p>` + payable.map(x => {
+      const left = x.holdExpires && !isNaN(new Date(x.holdExpires.replace(' ', 'T') + '+07:00')) ? Math.max(0, Math.round((new Date(x.holdExpires.replace(' ', 'T') + '+07:00') - Date.now()) / 60000)) : null;
+      const dep = x.depositDue > 0 && x.depositDue < x.balance ? x.depositDue : null;
+      return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.ref)}</b><span class="chip ${x.status}">${STATUS_TH[x.status] || x.status}</span></div>
+      <div class="muted" style="font-size:13px;margin:4px 0">${fmtDate(x.checkIn)} → ${fmtDate(x.checkOut)} · ${x.nights} คืน · ${x.units.length} ห้อง</div>
+      <div class="kv"><span>ยอดรวม</span><b>${money(x.total)}</b></div><div class="kv"><span>ค้างชำระ</span><b class="big">${money(x.balance)}</b></div>
+      ${dep ? `<div class="kv"><span>มัดจำขั้นต่ำ</span><b>${money(dep)}</b></div>` : ''}
+      ${left !== null ? `<div class="muted" style="font-size:12.5px;margin-top:4px">⏳ เหลือเวลาชำระ ${left >= 60 ? Math.floor(left / 60) + ' ชม. ' + (left % 60) + ' นาที' : left + ' นาที'}</div>` : ''}
+      <button class="btn" style="margin-top:10px" onclick="S.pay={ref:'${esc(x.ref)}'};pagePay()">แจ้งชำระเงิน</button></div>`;
+    }).join('');
+    return;
+  }
   const b = payable.find(x => x.ref === P.ref);
   const full = b.balance, dep = b.depositDue > 0 && b.depositDue < full ? b.depositDue : null;
   P.amount = P.amount && P.amount <= full ? P.amount : (dep || full);
   const now = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 16);
-  $('#body').innerHTML = `${payable.length > 1 ? `<label>เลือกรายการจอง</label><select id="pr" onchange="S.pay={ref:this.value};pagePay()">${payable.map(x => `<option value="${esc(x.ref)}" ${x.ref === P.ref ? 'selected' : ''}>${esc(x.ref)} · ${fmtDate(x.checkIn)}</option>`).join('')}</select>` : ''}
+  $('#body').innerHTML = `${payable.length > 1 ? `<button class="btn sm sec" style="margin-bottom:8px" onclick="S.pay={};pagePay()">‹ กลับไปรายการรอชำระ</button>` : ''}
   <div class="card" style="margin-top:10px"><div class="kv"><span>เลขที่จอง</span><b>${esc(b.ref)}</b></div><div class="kv"><span>เข้าพัก</span><b>${fmtDate(b.checkIn)} · ${b.nights} คืน</b></div><div class="kv"><span>ยอดรวม</span><b>${money(b.total)}</b></div><div class="kv"><span>ค้างชำระ</span><b class="big">${money(full)}</b></div></div>
   <h2>โอนเงินมาที่</h2>${bankBox()}
   <h2>ยอดที่โอน</h2><div class="stack">
