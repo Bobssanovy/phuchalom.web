@@ -141,7 +141,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v15-paybtn-2026-11-14';
+const WEB_VERSION = 'v16-admin-roles-2026-11-14';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -717,6 +717,7 @@ function renderAdmin() {
   const A = S.admin, d = A.data, k = d.kpi;
   const [y, m] = d.month.split('-').map(Number);
   const tabs = [['cal', 'ปฏิทินการจอง'], ['pay', `รอตรวจสลิป${k.pendingReview ? ' (' + k.pendingReview + ')' : ''}`], ['list', 'รายการจองทั้งหมด'], ['today', 'วันนี้']];
+  if (S.me.role === 'SUPER_ADMIN') tabs.push(['admins', 'จัดการแอดมิน']);
   $('#adm').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h1>แดชบอร์ด · ${esc(S.cfg.campName)}</h1><p class="sub">ภาพรวมการจองและปฏิทินห้องพัก</p></div>
   <button class="btn sm" onclick="go('book',{admin:true})">+ จองแทนลูกค้า</button></div>
   <div class="kpis"><div class="card"><div class="muted">อัตราเข้าพัก ${TH_MONTH_FULL[m - 1]}</div><div class="big">${(k.occupancy * 100).toFixed(1)}%</div><div class="muted" style="font-size:12px">${k.occupiedNights} จาก ${k.unitCount * d.days.length} ห้อง-คืน</div></div>
@@ -725,7 +726,7 @@ function renderAdmin() {
   <div class="card" style="${k.pendingReview ? 'border-color:var(--blue)' : ''}"><div class="muted">รอตรวจสลิป</div><div class="big">${k.pendingReview}</div><div class="muted" style="font-size:12px">เข้าพักอยู่ตอนนี้ ${d.inHouse} การจอง</div></div></div>
   <div class="tabs">${tabs.map(([id, t]) => `<button class="${A.tab === id ? 'on' : ''}" onclick="S.admin.tab='${id}';renderAdmin()">${t}</button>`).join('')}</div>
   <div id="tab"></div>`;
-  ({ cal: tabCal, pay: tabPay, list: tabList, today: tabToday })[A.tab]();
+  ({ cal: tabCal, pay: tabPay, list: tabList, today: tabToday, admins: tabAdmins })[A.tab]();
 }
 function monthShift(n) {
   const A = S.admin, [y, m] = A.month.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1));
@@ -784,12 +785,30 @@ async function openAdminBookingRef(ref) {
   const b = await run(() => api('getBooking', { ref })); if (!b) return;
   const pend = b.payments.filter(p => p.status === 'PENDING_REVIEW');
   const act = !['CANCELLED', 'EXPIRED'].includes(b.status);
-  modal(bookingDetailHtml(b) + `<div class="kv"><span>ที่มา</span><b>${esc(b.source)}</b></div>${b.note ? `<div class="kv"><span>หมายเหตุ</span><b>${esc(b.note)}</b></div>` : ''}
+  const acts = (b.adminActivity || []).map(x => `<div class="kv"><span>${esc(adminActionText(x.action))}</span><b>${esc(x.adminName)}<br><small class="muted">${fmtDT(x.at)}</small></b></div>`).join('');
+  modal(bookingDetailHtml(b) + `<div class="kv"><span>ที่มา</span><b>${esc(b.source)}</b></div>${b.note ? `<div class="kv"><span>หมายเหตุ</span><b>${esc(b.note)}</b></div>` : ''}${acts ? `<h3 style="margin-top:16px">ผู้ดำเนินการ</h3>${acts}` : ''}
   <div class="stack" style="margin-top:14px">
   ${b.payments.filter(p => p.hasSlip).map(p => `<button class="btn sec" onclick="viewSlip('${p.id}')">ดูสลิป ${money(p.amount)} (${STATUS_TH[p.status]})</button>`).join('')}
   ${pend.map(p => `<div class="row"><button class="btn sm" onclick="review('${p.id}','APPROVE')">อนุมัติ ${money(p.amount)}</button><button class="btn bad sm" onclick="review('${p.id}','REJECT')">ปฏิเสธ</button></div>`).join('')}
   ${act ? `<button class="btn sec" onclick="adminMove('${esc(b.ref)}','${b.checkIn}')">เลื่อนวันเข้าพัก (แอดมิน)</button><button class="btn sec" style="color:var(--bad);border-color:var(--bad)" onclick="adminCancel('${esc(b.ref)}')">ยกเลิกการจอง</button>` : ''}
   <button class="btn sec" onclick="closeModal()">ปิด</button></div>`);
+}
+function adminActionText(a) { return ({ BOOKING_CREATED_BY_ADMIN:'รับจองโดย', PAYMENT_APPROVED:'อนุมัติสลิปโดย', PAYMENT_REJECTED:'ปฏิเสธสลิปโดย', BOOKING_RESCHEDULED_BY_ADMIN:'เลื่อนวันโดย', BOOKING_CANCELLED_BY_ADMIN:'ยกเลิกโดย' })[a] || a; }
+async function tabAdmins() {
+  if (S.me.role !== 'SUPER_ADMIN') return;
+  const list = await run(() => api('adminList'), '#msg'); if (!list) return;
+  const active = list.filter(x => x.active);
+  $('#tab').innerHTML = `<div class="card"><h2>จัดการผู้ดูแล (${active.length}/6)</h2><p class="muted">Super Admin 1 คน และ Admin ทั่วไปได้สูงสุด 5 คน</p>
+  ${active.map(a => `<div class="kv" style="align-items:center"><span><b>${esc(a.name || 'ยังไม่ได้ตั้งชื่อ')}</b><br><small class="muted">${esc(a.userId)} · ${a.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}</small></span>${a.role === 'SUPER_ADMIN' ? '<b class="chip CONFIRMED">เจ้าของระบบ</b>' : `<button class="btn bad sm" style="flex:0 0 auto" onclick="removeAdmin('${esc(a.userId)}','${esc(a.name)}')">นำออก</button>`}</div>`).join('')}
+  </div><div class="card"><h3>เพิ่มหรือแก้ไข Admin</h3><label>ชื่อที่แสดงในรายการ</label><input id="adn" maxlength="60" placeholder="เช่น คุณแอน"><label>LINE User ID</label><input id="adi" placeholder="Uxxxxxxxx..." autocomplete="off"><button class="btn" onclick="saveAdmin()">บันทึก Admin</button></div>`;
+}
+async function saveAdmin() {
+  const name = $('#adn').value.trim(), userId = $('#adi').value.trim();
+  const r = await run(() => api('adminSave', { name, userId }), '#msg'); if (r) tabAdmins();
+}
+async function removeAdmin(userId, name) {
+  if (!confirm('นำ ' + (name || userId) + ' ออกจากการเป็น Admin?')) return;
+  const r = await run(() => api('adminRemove', { userId }), '#msg'); if (r) tabAdmins();
 }
 async function adminMove(ref, cur) {
   const nd = prompt('วันเช็คอินใหม่ (YYYY-MM-DD) — จำนวนคืนเท่าเดิม', cur); if (!nd || nd === cur) return;
