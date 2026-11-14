@@ -770,7 +770,7 @@ async function review(pid, decision) {
 }
 function tabToday() {
   const d = S.admin.data;
-  const lst = (t, a, kind) => `<h2>${t} (${a.length})</h2>` + (a.length ? a.map(b => `<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(b.name)}</b><span class="chip ${b.status}">${STATUS_TH[b.status]}</span></div><div class="muted" style="font-size:13px">${esc(b.ref)} · ห้อง ${b.units.map(esc).join(', ')} · ${esc(b.phone)}</div>${b.balance > 0 ? `<div class="warn" style="margin-top:6px">ค้างชำระ ${money(b.balance)}</div>` : ''}</div>`).join('') : '<div class="card muted">ไม่มี</div>');
+  const lst = (t, a, kind) => `<h2>${t} (${a.length})</h2>` + (a.length ? a.map(b => `<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(b.name)}</b><span class="chip ${b.status}">${STATUS_TH[b.status]}</span></div><div class="muted" style="font-size:13px">${esc(b.ref)} · ห้อง ${b.units.map(id => esc((d.units.find(u => u.unitId === id) || {}).name || id)).join(', ')} · ${esc(b.phone)}</div>${b.balance > 0 ? `<div class="warn" style="margin-top:6px">ค้างชำระ ${money(b.balance)}</div>` : ''}</div>`).join('') : '<div class="card muted">ไม่มี</div>');
   $('#tab').innerHTML = `<div class="row" style="align-items:flex-start"><div>${lst('เช็คอินวันนี้', d.arrivalsToday)}</div><div>${lst('เช็คเอาท์วันนี้', d.departuresToday)}</div></div>`;
 }
 async function tabList() {
