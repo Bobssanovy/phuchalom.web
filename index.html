@@ -141,12 +141,16 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v17-admin-apply-2026-11-14';
+const WEB_VERSION = 'v18-pricing-balance-2026-11-16';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const TH_DOW = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 const STATUS_TH = { PENDING_PAYMENT: 'รอชำระเงิน', PAYMENT_REVIEW: 'รอตรวจสลิป', CONFIRMED: 'ยืนยันแล้ว', CANCELLED: 'ยกเลิก', EXPIRED: 'หมดเวลา', PENDING_REVIEW: 'รอตรวจ', APPROVED: 'อนุมัติ', REJECTED: 'ไม่ผ่าน' };
+const STAY_META = {
+  HOUSE: ['บ้านพัก', 'บ้านพัก'], RENTAL_TENT: ['เต็นท์เช่า', 'โซน A, D'], OWN_TENT: ['นำเต็นท์มาเอง', 'โซน B, C · คิดเฉพาะผู้ใหญ่'],
+  TARP: ['พื้นที่กางทาป 4×4 ม.', 'โซน B, C · คิดต่อพื้นที่'], CAR_CAMP: ['คาร์แคมป์', 'โซน P · รอปรับปรุงรูปผัง']
+};
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = n => '฿' + Number(n || 0).toLocaleString('th-TH');
 const pad = n => String(n).padStart(2, '0');
@@ -257,7 +261,7 @@ const nightsBetween = (a, b) => { const f = s => { const [y, m, d] = s.split('-'
 
 function newBook(admin) {
   const t = todayStr();
-  return { step: 1, admin: !!admin, checkIn: addDays(t, 1), checkOut: addDays(t, 2), adults: 2, children: 0, avail: null, sel: [], zoom: 1, form: { name: S.me.name || '', phone: '', note: '', consent: false }, result: null };
+  return { step: 1, admin: !!admin, checkIn: addDays(t, 1), checkOut: addDays(t, 2), adults: 2, children: 0, stayType: 'RENTAL_TENT', avail: null, sel: [], zoom: 1, form: { name: S.me.name || '', phone: '', note: '', consent: false }, result: null };
 }
 function pageBook(opts) {
   if (opts && opts.admin) S.book = newBook(true);
@@ -340,17 +344,19 @@ function stepGuests() {
   const B = S.book;
   const stp = (k, v) => `<div class="stepper"><button onclick="bk('${k}',-1)" aria-label="ลด">−</button><span>${v}</span><button onclick="bk('${k}',1)" aria-label="เพิ่ม">+</button></div>`;
   bookFrame(`<div class="card"><h2 class="ttl">👥 จำนวนผู้เข้าพัก</h2><p class="sub">ใช้คำนวณว่าที่พักที่เลือกรองรับได้พอหรือไม่</p>
+  <label>ประเภทที่พัก</label><select id="staytype" onchange="changeStayType(this.value)">${Object.entries(STAY_META).map(([id, x]) => `<option value="${id}" ${B.stayType === id ? 'selected' : ''}>${esc(x[0])} — ${esc(x[1])}</option>`).join('')}</select>
   <div class="kv" style="align-items:center"><span>ผู้ใหญ่<br><small class="muted">อายุ 12 ปีขึ้นไป</small></span>${stp('adults', B.adults)}</div>
-  <div class="kv" style="align-items:center"><span>เด็ก<br><small class="muted">ต่ำกว่า 12 ปี</small></span>${stp('children', B.children)}</div>
+  <div class="kv" style="align-items:center"><span>เด็ก<br><small class="muted">ต่ำกว่า 5 ปีไม่คิดค่าบริการสำหรับเต็นท์ส่วนตัว/คาร์แคมป์</small></span>${stp('children', B.children)}</div>
   <div class="nights">รวม <b>${B.adults + B.children}</b> คน</div>
   <div class="row"><button class="btn sec" onclick="setStep(1)">← ย้อนกลับ</button><button class="btn" onclick="setStep(3)">ถัดไป →</button></div></div>`);
 }
 function bk(k, d) { const B = S.book; B[k] = Math.max(k === 'adults' ? 1 : 0, Math.min(40, B[k] + d)); stepGuests(); }
+function changeStayType(v) { const B = S.book; B.stayType = v; B.avail = null; B.sel = []; stepGuests(); }
 
 /* ----- ขั้นที่ 3: เลือกตำแหน่งบนผัง ----- */
 async function loadAvail(errSel) {
   const B = S.book;
-  const r = await run(() => api('availability', { checkIn: B.checkIn, checkOut: B.checkOut, allowPast: B.admin }), errSel);
+  const r = await run(() => api('availability', { checkIn: B.checkIn, checkOut: B.checkOut, allowPast: B.admin, stayType: B.stayType, adults: B.adults, children: B.children }), errSel);
   if (!r) return false;
   (r.units || []).forEach(u => { if (!u.status) u.status = u.available === false ? 'BOOKED' : 'FREE'; });
   B.avail = r; return true;
@@ -369,15 +375,17 @@ function unitPos(u) {
 }
 function renderMapStep(notice) {
   const B = S.book, a = B.avail;
-  const zones = [...new Set(a.units.map(u => u.zone))].sort();
+  const shown = a.units.filter(u => u.eligible !== false);
+  const zones = [...new Set(shown.map(u => u.zone))].sort();
   const pins = [], off = [];
-  a.units.forEach(u => {
+  shown.forEach(u => {
     const p = unitPos(u);
     if (p) pins.push(`<button class="pin ${u.status}" data-u="${esc(u.unitId)}" style="left:${p[0]}%;top:${p[1]}%" onclick="onPin('${esc(u.unitId)}')" aria-label="${esc(u.name)} ${ST_TXT[u.status]}">${esc(pinLbl(u))}</button>`);
     else off.push(`<button class="chipu ${u.status}" data-u="${esc(u.unitId)}" onclick="onPin('${esc(u.unitId)}')">${esc(u.name)}</button>`);
   });
-  bookFrame(`<div class="card"><h2 class="ttl">⛺ เลือกตำแหน่งที่พัก</h2><p class="sub">แตะผังเพื่อเลือกที่พักที่ต้องการ (กดอีกครั้งเพื่อยกเลิก) · ${a.nights} คืน</p>
+  bookFrame(`<div class="card"><h2 class="ttl">⛺ เลือกตำแหน่งที่พัก</h2><p class="sub">${esc(STAY_META[B.stayType][0])} · แตะผังเพื่อเลือกที่พัก (กดอีกครั้งเพื่อยกเลิก) · ${a.nights} คืน</p>
   ${notice ? `<div class="warn" style="margin-bottom:10px">${esc(notice)}</div>` : ''}
+  ${!shown.length ? `<div class="warn" style="margin-bottom:10px">ยังไม่มีตำแหน่งสำหรับ ${esc(STAY_META[B.stayType][0])}${B.stayType === 'CAR_CAMP' ? ' — โซน P จะเปิดเมื่อปรับปรุงรูปผังแล้ว' : ''}</div>` : ''}
   <div class="mapbox"><div class="mapscroll" id="mapscroll"><div class="map" id="map"><img src="${MAP_IMG}" alt="แผนผังลานกางเต็นท์" draggable="false">${pins.join('')}</div></div>
   <div class="maptoast" id="maptoast"></div></div>
   <div class="legend2"><span class="lg FREE">ว่าง</span><span class="lg HOLD">รอชำระ</span><span class="lg BOOKED">จองแล้ว</span><span class="lg CLOSED">ปิดปรับปรุง</span></div>
@@ -423,22 +431,24 @@ function onPin(id) {
   updateSel();
 }
 function selUnits() { const B = S.book; return B.sel.map(id => B.avail.units.find(u => u.unitId === id)).filter(Boolean); }
+function selectionTotal(sel) { return !sel.length ? 0 : (sel[0].priceMode === 'PER_PERSON' ? sel[0].total : sel.reduce((s, u) => s + u.total, 0)); }
 function guestText(B) { return `ผู้ใหญ่ ${B.adults} คน` + (B.children ? `, เด็ก ${B.children} คน` : ''); }
 function sumRows(B, sel, tot, perUnit) {
   return `<div class="sumrow"><span>📅 วันเข้าพัก</span><b>${fmtDate(B.checkIn, 1)}</b></div><div class="sumrow"><span>📅 วันออก</span><b>${fmtDate(B.checkOut, 1)}</b></div>
   <div class="sumrow"><span>🌙 จำนวนคืน</span><b>${B.avail.nights} คืน</b></div>
+  <div class="sumrow"><span>🏕️ ประเภท</span><b>${esc(STAY_META[B.stayType][0])}</b></div>
   <div class="sumrow"><span>👥 จำนวนผู้เข้าพัก</span><b>${guestText(B)}</b></div>
   <div class="sumrow"><span>⛺ ตำแหน่งที่พัก</span><b>${sel.length ? sel.map(u => esc(u.name) + ' (' + esc(zoneLbl(u.zone)) + ')').join(', ') : '-'}</b></div>
-  ${perUnit && sel.length > 1 ? sel.map(u => `<div class="sumrow sub2"><span>${esc(u.name)}</span><span>${money(u.total)}</span></div>`).join('') : ''}
+  ${perUnit && sel.length > 1 && sel[0].priceMode !== 'PER_PERSON' ? sel.map(u => `<div class="sumrow sub2"><span>${esc(u.name)}</span><span>${money(u.total)}</span></div>`).join('') : ''}
   <div class="sumtotal"><span>ราคารวม</span><b>${money(tot)}</b></div>`;
 }
 function updateSel() {
   const B = S.book, sel = selUnits();
   document.querySelectorAll('[data-u]').forEach(el => el.classList.toggle('sel', B.sel.includes(el.dataset.u)));
-  const cap = sel.reduce((s, u) => s + u.capacity, 0), tot = sel.reduce((s, u) => s + u.total, 0), g = B.adults + B.children;
+  const cap = sel.reduce((s, u) => s + u.capacity, 0), tot = selectionTotal(sel), g = B.adults + B.children;
   const ok = sel.length > 0 && cap >= g;
   const cards = sel.length ? sel.map(u => `<div class="selcard"><div class="sc-l"><span class="sc-tag" style="background:${ZONE_CLR[u.zone] || 'var(--forest)'}">${esc(u.name)}</span><span class="sc-st">ว่าง</span></div>
-    <div class="sc-m"><b>${esc(zoneLbl(u.zone))}</b><div class="muted">👥 รองรับ ${u.capacity} คน</div><div class="muted">💰 ${money(u.perNight)} / คืน</div></div>
+    <div class="sc-m"><b>${esc(zoneLbl(u.zone))}</b><div class="muted">👥 รองรับ ${u.capacity} คน</div><div class="muted">💰 ${money(u.perNight)} / คืน${u.priceMode === 'PER_PERSON' ? ' (รวมผู้ใหญ่)' : ''}</div></div>
     <button class="sc-x" onclick="onPin('${esc(u.unitId)}')" title="กดเพื่อยกเลิก" aria-label="ยกเลิก ${esc(u.name)}">✓</button></div>`).join('')
     : '<div class="selhint">ยังไม่ได้เลือกที่พัก — แตะวงกลมสีเขียวบนผัง</div>';
   $('#selpanel').innerHTML = `${cards}<div class="card sumcard"><h3>📋 สรุปรายการจอง</h3>${sumRows(B, sel, tot)}
@@ -461,7 +471,7 @@ async function mapNext() {
 
 /* ----- ขั้นที่ 4: ยืนยัน ----- */
 function stepConfirm() {
-  const B = S.book, c = S.cfg, f = B.form, sel = selUnits(), tot = sel.reduce((s, u) => s + u.total, 0);
+  const B = S.book, c = S.cfg, f = B.form, sel = selUnits(), tot = selectionTotal(sel);
   const dep = Math.ceil(tot * c.depositPercent / 100);
   bookFrame(`<div class="card sumcard"><h3>📋 สรุปรายการจอง</h3>${sumRows(B, sel, tot, true)}
   ${B.admin ? '' : `<div class="sumrow" style="margin-top:8px"><span>มัดจำ (${c.depositPercent}%)</span><b>${money(dep)}</b></div>`}</div>
@@ -477,7 +487,7 @@ function stepConfirm() {
 async function submitBooking() {
   const B = S.book, f = B.form;
   f.name = $('#fn').value.trim(); f.phone = $('#fp').value.trim(); f.note = $('#fo').value.trim(); f.consent = B.admin ? true : $('#fc').checked;
-  const params = { checkIn: B.checkIn, checkOut: B.checkOut, unitIds: B.sel, adults: B.adults, children: B.children, name: f.name, phone: f.phone, note: f.note, consent: f.consent, allowPast: B.admin };
+  const params = { checkIn: B.checkIn, checkOut: B.checkOut, unitIds: B.sel, adults: B.adults, children: B.children, stayType: B.stayType, name: f.name, phone: f.phone, note: f.note, consent: f.consent, allowPast: B.admin };
   busy(true);
   try {
     B.result = await api(B.admin ? 'adminCreateBooking' : 'createBooking', params);
@@ -726,17 +736,18 @@ async function loadDash() {
 function renderAdmin() {
   const A = S.admin, d = A.data, k = d.kpi;
   const [y, m] = d.month.split('-').map(Number);
-  const tabs = [['cal', 'ปฏิทินการจอง'], ['pay', `รอตรวจสลิป${k.pendingReview ? ' (' + k.pendingReview + ')' : ''}`], ['list', 'รายการจองทั้งหมด'], ['today', 'วันนี้']];
+  const tabs = [['cal', 'ปฏิทินการจอง'], ['pay', `รอตรวจสลิป${k.pendingReview ? ' (' + k.pendingReview + ')' : ''}`], ['list', 'รายการจองทั้งหมด'], ['today', 'วันนี้'], ['pricing', 'ปรับราคา']];
   if (S.me.role === 'SUPER_ADMIN') tabs.push(['admins', 'จัดการแอดมิน']);
   $('#adm').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h1>แดชบอร์ด · ${esc(S.cfg.campName)}</h1><p class="sub">ภาพรวมการจองและปฏิทินห้องพัก</p></div>
   <button class="btn sm" onclick="go('book',{admin:true})">+ จองแทนลูกค้า</button></div>
+  <div class="${d.houseSeasonActive ? 'warn' : 'ok'}" style="margin-bottom:12px">💰 ${esc(d.pricingNotice)}</div>
   <div class="kpis"><div class="card"><div class="muted">อัตราเข้าพัก ${TH_MONTH_FULL[m - 1]}</div><div class="big">${(k.occupancy * 100).toFixed(1)}%</div><div class="muted" style="font-size:12px">${k.occupiedNights} จาก ${k.unitCount * d.days.length} ห้อง-คืน</div></div>
   <div class="card"><div class="muted">รับชำระแล้ว (เช็คอินเดือนนี้)</div><div class="big">${money(k.paid)}</div><div class="muted" style="font-size:12px">${k.bookingCount} การจอง · ยืนยัน ${k.confirmed}</div></div>
   <div class="card"><div class="muted">ยอดค้างชำระ</div><div class="big">${money(k.outstanding)}</div><div class="muted" style="font-size:12px">รอชำระ ${k.awaitingPayment} รายการ</div></div>
   <div class="card" style="${k.pendingReview ? 'border-color:var(--blue)' : ''}"><div class="muted">รอตรวจสลิป</div><div class="big">${k.pendingReview}</div><div class="muted" style="font-size:12px">เข้าพักอยู่ตอนนี้ ${d.inHouse} การจอง</div></div></div>
   <div class="tabs">${tabs.map(([id, t]) => `<button class="${A.tab === id ? 'on' : ''}" onclick="S.admin.tab='${id}';renderAdmin()">${t}</button>`).join('')}</div>
   <div id="tab"></div>`;
-  ({ cal: tabCal, pay: tabPay, list: tabList, today: tabToday, admins: tabAdmins })[A.tab]();
+  ({ cal: tabCal, pay: tabPay, list: tabList, today: tabToday, pricing: tabPricing, admins: tabAdmins })[A.tab]();
 }
 function monthShift(n) {
   const A = S.admin, [y, m] = A.month.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1));
@@ -765,7 +776,7 @@ function tabPay() {
   const p = S.admin.data.pending;
   $('#tab').innerHTML = p.length ? p.map(x => `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.ref)}</b><span class="chip PENDING_REVIEW">รอตรวจ</span></div>
   <div class="kv"><span>ผู้จอง</span><b>${esc(x.name)} · ${esc(x.phone)}</b></div><div class="kv"><span>ยอดที่แจ้ง</span><b class="big">${money(x.amount)}</b></div>
-  <div class="kv"><span>ยอดรวม / ชำระแล้ว</span><b>${money(x.total)} / ${money(x.paid)}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div><div class="kv"><span>ผลอ่านสลิป</span><b>${x.ocr === 'OCR:MATCH' ? '✅ ยอดตรง' : x.ocr === 'OCR:MISMATCH' ? '⚠️ ยอดไม่ตรง' : x.ocr === 'OCR:UNREADABLE' ? '❓ อ่านไม่ได้ ตรวจเอง' : '-'}</b></div>${(x.flags || []).includes('RCV') ? '<div class="err" style="margin:6px 0">⚠️ ไม่พบเลขบัญชีหรือชื่อผู้รับของที่พักในสลิป ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}${(x.flags || []).includes('TIME') ? '<div class="err" style="margin:6px 0">⚠️ เวลาโอนในสลิปไม่สมเหตุสมผล (ก่อนเวลาจอง/อยู่ในอนาคต) ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}
+  <div class="kv"><span>ยอดเต็ม</span><b>${money(x.total)}</b></div><div class="kv"><span>ชำระแล้วก่อนรายการนี้</span><b>${money(x.paid)}</b></div><div class="kv"><span>ยอดคงค้างหลังอนุมัติ</span><b>${money(Math.max(0, x.total - x.paid - x.amount))}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div><div class="kv"><span>ผลอ่านสลิป</span><b>${x.ocr === 'OCR:MATCH' ? '✅ ยอดตรง' : x.ocr === 'OCR:MISMATCH' ? '⚠️ ยอดไม่ตรง' : x.ocr === 'OCR:UNREADABLE' ? '❓ อ่านไม่ได้ ตรวจเอง' : '-'}</b></div>${(x.flags || []).includes('RCV') ? '<div class="err" style="margin:6px 0">⚠️ ไม่พบเลขบัญชีหรือชื่อผู้รับของที่พักในสลิป ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}${(x.flags || []).includes('TIME') ? '<div class="err" style="margin:6px 0">⚠️ เวลาโอนในสลิปไม่สมเหตุสมผล (ก่อนเวลาจอง/อยู่ในอนาคต) ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}
   <div class="row" style="margin-top:10px"><button class="btn sec sm" onclick="viewSlip('${x.paymentId}')">ดูสลิป</button><button class="btn sm" onclick="review('${x.paymentId}','APPROVE')">อนุมัติ</button><button class="btn bad sm" onclick="review('${x.paymentId}','REJECT')">ปฏิเสธ</button></div></div>`).join('') : '<div class="card muted" style="text-align:center">ไม่มีรายการรอตรวจสลิป 🎉</div>';
 }
 async function viewSlip(pid) {
@@ -804,6 +815,28 @@ async function openAdminBookingRef(ref) {
   <button class="btn sec" onclick="closeModal()">ปิด</button></div>`);
 }
 function adminActionText(a) { return ({ BOOKING_CREATED_BY_ADMIN:'รับจองโดย', PAYMENT_APPROVED:'อนุมัติสลิปโดย', PAYMENT_REJECTED:'ปฏิเสธสลิปโดย', BOOKING_RESCHEDULED_BY_ADMIN:'เลื่อนวันโดย', BOOKING_CANCELLED_BY_ADMIN:'ยกเลิกโดย' })[a] || a; }
+async function tabPricing() {
+  $('#tab').innerHTML = '<div class="card muted" style="text-align:center">กำลังโหลดราคา…</div>';
+  const p = await run(() => api('adminPricing'), '#msg'); if (!p) return;
+  const field = (id, title, unit, note) => `<label>${esc(title)}</label><div class="row" style="align-items:center"><input id="${id}" type="number" min="0" max="100000" step="1" value="${Number(p[id] || 0)}"><span style="flex:0 0 105px" class="muted">บาท/${esc(unit)}</span></div>${note ? `<div class="muted" style="font-size:12px">${esc(note)}</div>` : ''}`;
+  $('#tab').innerHTML = `<div class="card"><h2 style="margin-top:0">ปรับราคาที่พัก</h2><div class="${p.houseSeasonActive ? 'warn' : 'ok'}">${esc(p.notice)}</div>
+  ${field('houseNormal','บ้านพัก — ราคาปกติ','หลัง/คืน','ใช้ทุกวันที่อยู่นอกช่วง 15 ธ.ค. – 15 ม.ค.')}
+  ${field('houseSeason','บ้านพัก — ราคาช่วงเทศกาล','หลัง/คืน','ระบบสลับราคาอัตโนมัติสำหรับคืนวันที่ 15 ธ.ค. ถึง 15 ม.ค. ของทุกปี')}
+  ${field('rentalTent','เต็นท์เช่า (โซน A, D)','หลัง/คืน')}
+  ${field('ownTentPerson','นำเต็นท์มาเอง (โซน B, C)','ผู้ใหญ่/คืน','เด็กต่ำกว่า 5 ปีไม่คิดค่าบริการ')}
+  ${field('tarpLock','พื้นที่กางทาป 4×4 ม. (โซน B, C)','ล็อก/คืน')}
+  ${field('carCampPerson','คาร์แคมป์ (โซน P)','ผู้ใหญ่/คืน','เตรียมราคาไว้แล้ว — เปิดให้เลือกเมื่อเพิ่มโซน P และปรับรูปผัง')}
+  <div id="prmsg" style="margin-top:12px"></div><button class="btn" onclick="savePricing()">บันทึกราคา</button></div>`;
+}
+async function savePricing() {
+  const ids = ['houseNormal','houseSeason','rentalTent','ownTentPerson','tarpLock','carCampPerson'];
+  const p = {}; for (const id of ids) p[id] = Number($('#' + id).value);
+  if (ids.some(id => !Number.isFinite(p[id]) || p[id] < 0)) { $('#prmsg').innerHTML = toast('กรุณากรอกราคาให้ถูกต้อง'); return; }
+  if (!confirm('ยืนยันบันทึกราคาใหม่? ราคานี้จะใช้กับการจองใหม่ทันที')) return;
+  const r = await run(() => api('adminSavePricing', p), '#prmsg'); if (!r) return;
+  S.cfg.pricing = r; $('#prmsg').innerHTML = toast('บันทึกราคาเรียบร้อย', 'ok');
+  setTimeout(tabPricing, 600);
+}
 async function tabAdmins() {
   if (S.me.role !== 'SUPER_ADMIN') return;
   const data = await run(() => Promise.all([api('adminList'), api('adminRequests')]), '#msg'); if (!data) return;
