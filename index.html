@@ -142,7 +142,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v21-auto-zone-type-2026-11-17';
+const WEB_VERSION = 'v24-guest-age-extra-bed-2026-11-17';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -262,7 +262,7 @@ const nightsBetween = (a, b) => { const f = s => { const [y, m, d] = s.split('-'
 
 function newBook(admin) {
   const t = todayStr();
-  return { step: 1, admin: !!admin, checkIn: addDays(t, 1), checkOut: addDays(t, 2), adults: 2, children: 0, stayType: '', tarpWant: false, tarpSel: [], pickMode: 'TENT', avail: null, sel: [], zoom: 1, form: { name: S.me.name || '', phone: '', note: '', consent: false }, result: null };
+  return { step: 1, admin: !!admin, checkIn: addDays(t, 1), checkOut: addDays(t, 2), adults: 2, youngChildren: 0, olderChildren: 0, children: 0, extraBeds: 0, stayType: '', tarpWant: false, tarpSel: [], pickMode: 'TENT', avail: null, sel: [], zoom: 1, form: { name: S.me.name || '', phone: '', note: '', consent: false }, result: null };
 }
 function pageBook(opts) {
   if (opts && opts.admin) S.book = newBook(true);
@@ -345,12 +345,15 @@ function stepGuests() {
   const B = S.book;
   const stp = (k, v) => `<div class="stepper"><button onclick="bk('${k}',-1)" aria-label="ลด">−</button><span>${v}</span><button onclick="bk('${k}',1)" aria-label="เพิ่ม">+</button></div>`;
   bookFrame(`<div class="card"><h2 class="ttl">👥 จำนวนผู้เข้าพัก</h2>
-  <div class="kv" style="align-items:center"><span>ผู้ใหญ่<br><small class="muted">อายุ 12 ปีขึ้นไป</small></span>${stp('adults', B.adults)}</div>
-  <div class="kv" style="align-items:center"><span>เด็ก<br><small class="muted">ต่ำกว่า 5 ปีไม่คิดค่าบริการสำหรับเต็นท์ส่วนตัว/คาร์แคมป์</small></span>${stp('children', B.children)}</div>
-  <div class="nights">รวม <b>${B.adults + B.children}</b> คน</div>
+  <div class="kv" style="align-items:center"><span>ผู้ใหญ่<br><small class="muted">อายุ 12 ปีขึ้นไป · 200 บาท/คน/คืน</small></span>${stp('adults', B.adults)}</div>
+  <div class="kv" style="align-items:center"><span>เด็กโต<br><small class="muted">อายุ 6–11 ปี · 100 บาท/คน/คืน</small></span>${stp('olderChildren', B.olderChildren)}</div>
+  <div class="kv" style="align-items:center"><span>เด็กเล็ก<br><small class="muted">อายุ 0–5 ปี · ฟรี</small></span>${stp('youngChildren', B.youngChildren)}</div>
+  <div class="nights">รวม <b>${guestCount(B)}</b> คน</div>
   <div id="gmsg"></div><div class="row"><button class="btn sec" onclick="setStep(1)">← ย้อนกลับ</button><button class="btn" onclick="guestsNext()">ถัดไป →</button></div></div>`);
 }
 function bk(k, d) { const B = S.book; B[k] = Math.max(k === 'adults' ? 1 : 0, Math.min(40, B[k] + d)); stepGuests(); }
+function totalChildren(B) { return Number(B.youngChildren || 0) + Number(B.olderChildren || 0); }
+function guestCount(B) { return Number(B.adults || 0) + totalChildren(B); }
 function changeStayType(v) { const B = S.book; B.stayType = v; B.tarpWant = false; B.tarpSel = []; B.pickMode = 'TENT'; B.avail = null; B.sel = []; stepGuests(); }
 function toggleTarp(on) { const B = S.book; B.tarpWant = !!on; B.tarpSel = []; B.pickMode = 'TENT'; updateSel(); }
 function guestsNext() {
@@ -360,7 +363,7 @@ function guestsNext() {
 /* ----- ขั้นที่ 3: เลือกตำแหน่งบนผัง ----- */
 async function loadAvail(errSel) {
   const B = S.book;
-  const r = await run(() => api('availability', { checkIn: B.checkIn, checkOut: B.checkOut, allowPast: B.admin, stayType: '', adults: B.adults, children: B.children }), errSel);
+  const r = await run(() => api('availability', { checkIn: B.checkIn, checkOut: B.checkOut, allowPast: B.admin, stayType: '', adults: B.adults, children: totalChildren(B), youngChildren: B.youngChildren, olderChildren: B.olderChildren }), errSel);
   if (!r) return false;
   (r.units || []).forEach(u => { if (!u.status) u.status = u.available === false ? 'BOOKED' : 'FREE'; });
   B.avail = r; return true;
@@ -447,7 +450,7 @@ function onPin(id) {
     const type = unitStayType(u);
     if (!type) return mapToast('ไม่พบประเภทที่พักของตำแหน่งนี้');
     if (B.stayType && B.stayType !== type) return mapToast('กรุณาเลือกตำแหน่งประเภทเดียวกันในการจองหนึ่งรายการ');
-    if (['OWN_TENT','RENTAL_TENT'].includes(type) && B.children > B.adults * 3) return mapToast('ผู้ใหญ่ 1 คนมีเด็กตามได้ไม่เกิน 3 คน กรุณากลับไปแก้จำนวนผู้เข้าพัก');
+    if (['OWN_TENT','RENTAL_TENT'].includes(type) && totalChildren(B) > B.adults * 3) return mapToast('ผู้ใหญ่ 1 คนมีเด็กตามได้ไม่เกิน 3 คน กรุณากลับไปแก้จำนวนผู้เข้าพัก');
     B.stayType = type;
     const maxTent = ['OWN_TENT','RENTAL_TENT'].includes(B.stayType) ? B.adults : S.cfg.maxUnits;
     if (B.sel.length >= maxTent) return mapToast('จองเกินจำนวนผู้เข้าพัก ผู้ใหญ่ ' + B.adults + ' คน จองได้สูงสุด ' + maxTent + ' ล็อก');
@@ -468,9 +471,11 @@ function selUnits() { const B = S.book; return B.sel.map(id => B.avail.units.fin
 function tarpUnits() { const B = S.book; return B.tarpSel.map(id => B.avail.units.find(u => u.unitId === id)).filter(Boolean); }
 function selectionTotal(sel) {
   const B = S.book, main = !sel.length ? 0 : (sel[0].priceMode === 'PER_PERSON' ? sel[0].total : sel.reduce((s, u) => s + u.total, 0));
-  return main + (B.tarpWant ? B.tarpSel.length * Number(S.cfg.pricing.tarpLock || 0) * B.avail.nights : 0);
+  const beds = B.stayType === 'HOUSE' ? Number(B.extraBeds || 0) * Number(S.cfg.pricing.extraBed || 350) * B.avail.nights : 0;
+  return main + beds + (B.tarpWant ? B.tarpSel.length * Number(S.cfg.pricing.tarpLock || 0) * B.avail.nights : 0);
 }
-function guestText(B) { return `ผู้ใหญ่ ${B.adults} คน` + (B.children ? `, เด็ก ${B.children} คน` : ''); }
+function guestText(B) { return `ผู้ใหญ่ ${B.adults} คน, เด็กโต ${B.olderChildren || 0} คน, เด็กเล็ก ${B.youngChildren || 0} คน`; }
+function setExtraBeds(n) { const B = S.book, max = Math.min(2, selUnits().length * 2); B.extraBeds = Math.max(0, Math.min(max, Number(n) || 0)); updateSel(); }
 function sumRows(B, sel, tot, perUnit) {
   return `<div class="sumrow"><span>📅 วันเข้าพัก</span><b>${fmtDate(B.checkIn, 1)}</b></div><div class="sumrow"><span>📅 วันออก</span><b>${fmtDate(B.checkOut, 1)}</b></div>
   <div class="sumrow"><span>🌙 จำนวนคืน</span><b>${B.avail.nights} คืน</b></div>
@@ -478,6 +483,7 @@ function sumRows(B, sel, tot, perUnit) {
   <div class="sumrow"><span>👥 จำนวนผู้เข้าพัก</span><b>${guestText(B)}</b></div>
   <div class="sumrow"><span>⛺ ตำแหน่งที่พัก</span><b>${sel.length ? sel.map(u => esc(u.name) + ' (' + esc(zoneLbl(u.zone)) + ')').join(', ') : '-'}</b></div>
   ${B.tarpWant ? `<div class="sumrow"><span>🔶 พื้นที่กางทาร์ป</span><b>${tarpUnits().length ? tarpUnits().map(u => esc(u.name)).join(', ') : 'ยังไม่ได้เลือก'}</b></div>` : ''}
+  ${B.stayType === 'HOUSE' ? `<div class="sumrow"><span>🛏️ เตียงเสริม</span><b>${B.extraBeds || 0} เตียง × ${money(Number(S.cfg.pricing.extraBed || 350))} / คืน</b></div>` : ''}
   ${perUnit && sel.length > 1 && sel[0].priceMode !== 'PER_PERSON' ? sel.map(u => `<div class="sumrow sub2"><span>${esc(u.name)}</span><span>${money(u.total)}</span></div>`).join('') : ''}
   <div class="sumtotal"><span>ราคารวม</span><b>${money(tot)}</b></div>`;
 }
@@ -486,17 +492,20 @@ function updateSel() {
   const tc = $('#tarpcontrol');
   if (tc) tc.innerHTML = B.stayType === 'OWN_TENT' ? `<div class="card" style="background:var(--sand);margin:8px 0"><b>ต้องการพื้นที่กางทาร์ปเพิ่มเติมไหม?</b><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" style="width:auto" ${B.tarpWant ? 'checked' : ''} onchange="toggleTarp(this.checked)"> ต้องการเลือกพื้นที่กางทาร์ป 4×4 เมตรเพิ่มเติม</label>${B.tarpWant ? `<div class="tabs" style="margin-top:8px"><button class="${B.pickMode === 'TENT' ? 'on' : ''}" onclick="setPickMode('TENT')">1. เลือกล็อกเต็นท์</button><button class="${B.pickMode === 'TARP' ? 'on' : ''}" onclick="setPickMode('TARP')">2. เลือกล็อกกางทาร์ป</button></div><div class="muted" style="font-size:12px">สีเขียว = ล็อกเต็นท์ · สีม่วง = ล็อกทาร์ป</div>` : ''}</div>` : '';
   document.querySelectorAll('[data-u]').forEach(el => { el.classList.toggle('sel', B.sel.includes(el.dataset.u)); el.classList.toggle('tarp-sel', B.tarpSel.includes(el.dataset.u)); });
-  const tentType = ['OWN_TENT','RENTAL_TENT'].includes(B.stayType), g = B.adults + B.children;
+  const houseType = B.stayType === 'HOUSE', tentType = ['OWN_TENT','RENTAL_TENT'].includes(B.stayType), g = guestCount(B);
+  if (!houseType) B.extraBeds = 0;
+  if (houseType) B.extraBeds = Math.min(Number(B.extraBeds || 0), Math.min(2, sel.length * 2));
   const minLocks = tentType ? Math.ceil(g / 4) : 1, maxLocks = tentType ? B.adults : S.cfg.maxUnits;
-  const cap = tentType ? sel.length * 4 : sel.reduce((s, u) => s + u.capacity, 0), tot = selectionTotal(sel);
+  const cap = houseType ? sel.length * 2 + B.extraBeds : (tentType ? sel.length * 4 : sel.reduce((s, u) => s + u.capacity, 0)), tot = selectionTotal(sel);
   const lockOk = sel.length >= minLocks && sel.length <= maxLocks, tarpOk = !B.tarpWant || B.tarpSel.length > 0;
   const ok = sel.length > 0 && cap >= g && lockOk && tarpOk;
   const cards = sel.length ? sel.map(u => `<div class="selcard"><div class="sc-l"><span class="sc-tag" style="background:${ZONE_CLR[u.zone] || 'var(--forest)'}">${esc(u.name)}</span><span class="sc-st">ว่าง</span></div>
-    <div class="sc-m"><b>${esc(zoneLbl(u.zone))}</b><div class="muted">👥 ${tentType ? '1 ล็อกอยู่ได้สูงสุด 4 คน' : 'รองรับ ' + u.capacity + ' คน'}</div><div class="muted">💰 ${money(u.perNight)} / คืน${u.priceMode === 'PER_PERSON' ? ' (รวมผู้ใหญ่)' : ''}</div></div>
+    <div class="sc-m"><b>${esc(zoneLbl(u.zone))}</b><div class="muted">👥 ${houseType ? 'รองรับ 2 คน' : (tentType ? '1 ล็อกอยู่ได้สูงสุด 4 คน' : 'รองรับ ' + u.capacity + ' คน')}</div><div class="muted">💰 ${money(u.perNight)} / คืน${u.priceMode === 'PER_PERSON' ? ' (ผู้ใหญ่ 200 · เด็กโต 100 · เด็กเล็กฟรี)' : ''}</div></div>
     <button class="sc-x" onclick="onPin('${esc(u.unitId)}')" title="กดเพื่อยกเลิก" aria-label="ยกเลิก ${esc(u.name)}">✓</button></div>`).join('')
     : '<div class="selhint">ยังไม่ได้เลือกที่พัก — แตะวงกลมสีเขียวบนผัง</div>';
   const tarpCards = B.tarpWant && B.tarpSel.length ? `<div class="card"><b>พื้นที่กางทาร์ปที่เลือก</b><div class="muted">${tarpUnits().map(u => esc(u.name)).join(', ')} · ${money(B.tarpSel.length * Number(S.cfg.pricing.tarpLock || 0) * B.avail.nights)}</div></div>` : '';
-  $('#selpanel').innerHTML = `${cards}${tarpCards}<div class="card sumcard"><h3>📋 สรุปรายการจอง</h3>${sumRows(B, sel, tot)}
+  const bedControl = houseType && sel.length ? `<div class="card" style="background:var(--sand)"><b>บ้านพักรองรับ 2 คน/หลัง</b><p class="muted">ต้องการเตียงเสริมหรือไม่? เตียงละ ${money(Number(S.cfg.pricing.extraBed || 350))}/คืน เพิ่มได้สูงสุด 2 เตียง</p><div class="stepper"><button onclick="setExtraBeds(${B.extraBeds - 1})">−</button><span>${B.extraBeds}</span><button onclick="setExtraBeds(${B.extraBeds + 1})">+</button></div></div>` : '';
+  $('#selpanel').innerHTML = `${cards}${bedControl}${tarpCards}<div class="card sumcard"><h3>📋 สรุปรายการจอง</h3>${sumRows(B, sel, tot)}
   ${sel.length < minLocks ? `<div class="warn" style="margin-top:10px">ผู้เข้าพัก ${g} คน ต้องจองอย่างน้อย ${minLocks} ล็อก — 1 ล็อกอยู่ได้สูงสุด 4 คน</div>` : ''}
   ${sel.length > maxLocks ? `<div class="warn" style="margin-top:10px">จองเกินจำนวนผู้เข้าพัก ผู้ใหญ่ ${B.adults} คน จองได้สูงสุด ${maxLocks} ล็อก</div>` : ''}
   ${B.tarpWant && !B.tarpSel.length ? `<div class="warn" style="margin-top:10px">กรุณากด “เลือกล็อกกางทาร์ป” แล้วเลือกพื้นที่เพิ่มเติมอย่างน้อย 1 ล็อก</div>` : ''}</div>
@@ -536,7 +545,7 @@ function stepConfirm() {
 async function submitBooking() {
   const B = S.book, f = B.form;
   f.name = $('#fn').value.trim(); f.phone = $('#fp').value.trim(); f.note = $('#fo').value.trim(); f.consent = B.admin ? true : $('#fc').checked;
-  const params = { checkIn: B.checkIn, checkOut: B.checkOut, unitIds: B.sel, tarpUnitIds: B.tarpWant ? B.tarpSel : [], adults: B.adults, children: B.children, stayType: B.stayType, name: f.name, phone: f.phone, note: f.note, consent: f.consent, allowPast: B.admin };
+  const params = { checkIn: B.checkIn, checkOut: B.checkOut, unitIds: B.sel, tarpUnitIds: B.tarpWant ? B.tarpSel : [], adults: B.adults, children: totalChildren(B), youngChildren: B.youngChildren, olderChildren: B.olderChildren, extraBeds: B.extraBeds || 0, stayType: B.stayType, name: f.name, phone: f.phone, note: f.note, consent: f.consent, allowPast: B.admin };
   busy(true);
   try {
     B.result = await api(B.admin ? 'adminCreateBooking' : 'createBooking', params);
@@ -889,10 +898,12 @@ async function tabPricing() {
   ${field('ownTentPerson','นำเต็นท์มาเอง (โซน A, D)','ผู้ใหญ่/คืน','เด็กต่ำกว่า 5 ปีไม่คิดค่าบริการ')}
   ${field('tarpLock','พื้นที่กางทาร์ป 4×4 ม. (โซน A, D)','ล็อก/คืน')}
   ${field('carCampPerson','คาร์แคมป์ (โซน P)','ผู้ใหญ่/คืน','ผู้ใหญ่ 1 คนมีเด็กตามได้ไม่เกิน 3 คน')}
+  ${field('olderChild','เด็กโต อายุ 6–11 ปี','คน/คืน','ใช้กับที่พักแบบคิดราคาต่อคน')}
+  ${field('extraBed','เตียงเสริมบ้านพัก','เตียง/คืน','เพิ่มได้สูงสุด 2 เตียงต่อการจอง')}
   <div id="prmsg" style="margin-top:12px"></div><button class="btn" onclick="savePricing()">บันทึกราคา</button></div>`;
 }
 async function savePricing() {
-  const ids = ['houseNormal','houseSeason','rentalTent','ownTentPerson','tarpLock','carCampPerson'];
+  const ids = ['houseNormal','houseSeason','rentalTent','ownTentPerson','tarpLock','carCampPerson','olderChild','extraBed'];
   const p = {}; for (const id of ids) p[id] = Number($('#' + id).value);
   if (ids.some(id => !Number.isFinite(p[id]) || p[id] < 0)) { $('#prmsg').innerHTML = toast('กรุณากรอกราคาให้ถูกต้อง'); return; }
   if (!confirm('ยืนยันบันทึกราคาใหม่? ราคานี้จะใช้กับการจองใหม่ทันที')) return;
