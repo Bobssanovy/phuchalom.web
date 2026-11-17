@@ -525,7 +525,7 @@ function stepConfirm() {
   bookFrame(`<div class="card sumcard"><h3>📋 สรุปรายการจอง</h3>${sumRows(B, sel, tot, true)}
   ${B.admin ? '' : `<div class="sumrow" style="margin-top:8px"><span>มัดจำ (${c.depositPercent}%)</span><b>${money(dep)}</b></div>`}</div>
   <div class="card"><label>ชื่อผู้จอง</label><input id="fn" value="${esc(f.name)}" maxlength="60" autocomplete="name">
-  <label>เบอร์โทร</label><input id="fp" value="${esc(f.phone)}" inputmode="tel" maxlength="12" placeholder="0812345678" autocomplete="tel">
+  <label>เบอร์โทร</label><input id="fp" value="${esc(f.phone)}" inputmode="tel" maxlength="12" placeholder="0xx-xxx-xxxx" autocomplete="tel">
   <label>หมายเหตุ (ถ้ามี)</label><textarea id="fo" rows="2" maxlength="300">${esc(f.note)}</textarea>
   ${B.admin ? '' : `<label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink);margin-top:14px"><input type="checkbox" id="fc" style="width:auto;margin-top:4px" ${f.consent ? 'checked' : ''}> <span style="font-size:13px">ยินยอมให้เก็บและใช้ชื่อ เบอร์โทร และ LINE ID เพื่อใช้ในการจองและติดต่อกลับ</span></label>
   ${c.cancelPolicy ? `<p class="muted" style="font-size:12px">${esc(c.cancelPolicy)}</p>` : ''}
@@ -648,7 +648,6 @@ async function pagePay() {
   const now = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 16);
   $('#body').innerHTML = `${payable.length > 1 ? `<button class="btn sm sec" style="margin-bottom:8px" onclick="S.pay={};pagePay()">‹ กลับไปรายการรอชำระ</button>` : ''}
   <div class="card" style="margin-top:10px"><div class="kv"><span>เลขที่จอง</span><b>${esc(b.ref)}</b></div><div class="kv"><span>เข้าพัก</span><b>${fmtDate(b.checkIn)} · ${b.nights} คืน</b></div><div class="kv"><span>ยอดรวม</span><b>${money(b.total)}</b></div><div class="kv"><span>ค้างชำระ</span><b class="big">${money(full)}</b></div></div>
-  <h2>โอนเงินมาที่</h2>${bankBox()}
   <h2>ยอดที่โอน</h2><div class="stack">
   ${dep ? `<label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${dep}" ${P.amount === dep ? 'checked' : ''}> มัดจำ ${money(dep)}</label>` : ''}
   <label style="display:flex;gap:8px;color:var(--ink);align-items:center;margin:0"><input type="radio" name="am" style="width:auto" value="${full}" ${P.amount === full ? 'checked' : ''}> ชำระเต็ม ${money(full)}</label></div>
@@ -657,7 +656,6 @@ async function pagePay() {
   <label class="btn sec" for="ps" style="display:block;text-align:center;cursor:pointer;margin:0">📎 แนบรูปสลิป</label>
   <input type="file" id="ps" accept="image/*" style="display:none">
   <div id="pv"></div>
-  <p class="muted" style="font-size:12.5px;margin:8px 0 0">เมื่อกดส่ง ระบบจะอ่านยอดเงินจากสลิปและตรวจว่าตรงกับยอดเรียกเก็บหรือไม่</p>
   <div id="msg2" style="margin-top:10px"></div>
   <div style="margin-top:12px"><button class="btn" onclick="submitPay('${esc(b.ref)}')">ส่งแจ้งชำระเงิน</button></div>`;
   document.querySelectorAll('input[name=am]').forEach(r => r.onchange = e => { S.pay.amount = Number(e.target.value); });
@@ -787,7 +785,7 @@ function renderAdmin() {
   const [y, m] = d.month.split('-').map(Number);
   const tabs = [['cal', 'ปฏิทินการจอง'], ['pay', `รอตรวจสลิป${k.pendingReview ? ' (' + k.pendingReview + ')' : ''}`], ['list', 'รายการจองทั้งหมด'], ['today', 'วันนี้'], ['pricing', 'ปรับราคา']];
   if (S.me.role === 'SUPER_ADMIN') tabs.push(['admins', 'จัดการแอดมิน']);
-  $('#adm').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h1>แดชบอร์ด · ${esc(S.cfg.campName)}</h1><p class="sub">ภาพรวมการจองและปฏิทินห้องพัก</p></div>
+  $('#adm').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h1>ระบบจองห้องพักภูชาโลม โฮมสเตย์ · ${esc(S.me.adminName || S.me.name || '')}</h1></div>
   <button class="btn sm" onclick="go('book',{admin:true})">+ จองแทนลูกค้า</button></div>
   <div class="${d.houseSeasonActive ? 'warn' : 'ok'}" style="margin-bottom:12px">💰 ${esc(d.pricingNotice)}</div>
   <div class="kpis"><div class="card"><div class="muted">อัตราเข้าพัก ${TH_MONTH_FULL[m - 1]}</div><div class="big">${(k.occupancy * 100).toFixed(1)}%</div><div class="muted" style="font-size:12px">${k.occupiedNights} จาก ${k.unitCount * d.days.length} ห้อง-คืน</div></div>
@@ -824,12 +822,28 @@ function tabCal() {
 function tabPay() {
   const p = S.admin.data.pending;
   $('#tab').innerHTML = p.length ? p.map(x => `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(x.ref)}</b><span class="chip PENDING_REVIEW">รอตรวจ</span></div>
-  <div class="kv"><span>ผู้จอง</span><b>${esc(x.name)} · ${esc(x.phone)}</b></div><div class="kv"><span>ยอดที่แจ้ง</span><b class="big">${money(x.amount)}</b></div>
-  <div class="kv"><span>ยอดเต็ม</span><b>${money(x.total)}</b></div><div class="kv"><span>ชำระแล้วก่อนรายการนี้</span><b>${money(x.paid)}</b></div><div class="kv"><span>ยอดคงค้างหลังอนุมัติ</span><b>${money(Math.max(0, x.total - x.paid - x.amount))}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div><div class="kv"><span>ผลอ่านสลิป</span><b>${x.ocr === 'OCR:MATCH' ? '✅ ยอดตรง' : x.ocr === 'OCR:MISMATCH' ? '⚠️ ยอดไม่ตรง' : x.ocr === 'OCR:UNREADABLE' ? '❓ อ่านไม่ได้ ตรวจเอง' : '-'}</b></div>${(x.flags || []).includes('RCV') ? '<div class="err" style="margin:6px 0">⚠️ ไม่พบเลขบัญชีหรือชื่อผู้รับของที่พักในสลิป ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}${(x.flags || []).includes('TIME') ? '<div class="err" style="margin:6px 0">⚠️ เวลาโอนในสลิปไม่สมเหตุสมผล (ก่อนเวลาจอง/อยู่ในอนาคต) ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}
+  <div class="kv"><span>ผู้จอง</span><b>${esc(x.name)} · ${esc(x.phone)}</b></div>
+  <div class="kv"><span>ยอดเต็ม</span><b>${money(x.total)}</b></div><div class="kv"><span>ยอดแจ้งชำระ</span><b class="big">${money(x.amount)}</b></div><div class="kv"><span>ยอดชำระ</span><b>${money(x.paid)}</b></div><div class="kv"><span>ยอดคงค้าง</span><b>${money(Math.max(0, x.total - x.paid - x.amount))}</b></div><div class="kv"><span>เวลาโอน</span><b>${esc(x.transferAt || '-')}</b></div><div class="kv"><span>ผลการอ่านสลิป</span><b>${x.ocr === 'OCR:MATCH' ? '✅ ยอดตรง' : x.ocr === 'OCR:MISMATCH' ? '⚠️ ยอดไม่ตรง' : x.ocr === 'OCR:UNREADABLE' ? '❓ อ่านไม่ได้ ตรวจเอง' : '-'}</b></div>${(x.flags || []).includes('RCV') ? '<div class="err" style="margin:6px 0">⚠️ ไม่พบเลขบัญชีหรือชื่อผู้รับของที่พักในสลิป ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}${(x.flags || []).includes('TIME') ? '<div class="err" style="margin:6px 0">⚠️ เวลาโอนในสลิปไม่สมเหตุสมผล (ก่อนเวลาจอง/อยู่ในอนาคต) ตรวจกับแอปธนาคารก่อนอนุมัติ</div>' : ''}
+  <div class="slipbox" id="slip-${esc(x.paymentId)}" style="margin-top:10px;text-align:center"><span class="muted">กำลังโหลดสลิป…</span></div>
   <div class="row" style="margin-top:10px"><button class="btn sec sm" onclick="viewSlip('${x.paymentId}')">ดูสลิป</button><button class="btn sm" onclick="review('${x.paymentId}','APPROVE')">อนุมัติ</button><button class="btn bad sm" onclick="review('${x.paymentId}','REJECT')">ปฏิเสธ</button></div></div>`).join('') : '<div class="card muted" style="text-align:center">ไม่มีรายการรอตรวจสลิป 🎉</div>';
+  p.forEach(x => loadInlineSlip(x.paymentId));
+}
+const SLIP_CACHE = {};
+async function loadInlineSlip(pid) {
+  const box = document.getElementById('slip-' + pid); if (!box) return;
+  try {
+    let s = SLIP_CACHE[pid];
+    if (!s) { s = await api('adminSlip', { paymentId: pid }); SLIP_CACHE[pid] = s; }
+    const b = document.getElementById('slip-' + pid); if (!b) return;
+    b.innerHTML = `<img src="data:${s.mime};base64,${s.base64}" alt="สลิปการโอน" style="max-width:100%;max-height:420px;border:1px solid var(--line);border-radius:10px;cursor:zoom-in" onclick="viewSlip('${pid}')">`;
+  } catch (e) {
+    const b = document.getElementById('slip-' + pid);
+    if (b) b.innerHTML = '<span class="muted">โหลดสลิปไม่สำเร็จ — กด "ดูสลิป" เพื่อลองใหม่</span>';
+  }
 }
 async function viewSlip(pid) {
-  const s = await run(() => api('adminSlip', { paymentId: pid })); if (!s) return;
+  const s = SLIP_CACHE[pid] || await run(() => api('adminSlip', { paymentId: pid })); if (!s) return;
+  SLIP_CACHE[pid] = s;
   modal(`<h3>สลิปการโอน</h3><img class="slip" src="data:${s.mime};base64,${s.base64}"><button class="btn sec" onclick="closeModal()">ปิด</button>`);
 }
 async function review(pid, decision) {
