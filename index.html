@@ -142,7 +142,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v19-new-map-lock-rules-2026-11-17';
+const WEB_VERSION = 'v21-auto-zone-type-2026-11-17';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -262,7 +262,7 @@ const nightsBetween = (a, b) => { const f = s => { const [y, m, d] = s.split('-'
 
 function newBook(admin) {
   const t = todayStr();
-  return { step: 1, admin: !!admin, checkIn: addDays(t, 1), checkOut: addDays(t, 2), adults: 2, children: 0, stayType: 'RENTAL_TENT', tarpWant: false, tarpSel: [], pickMode: 'TENT', avail: null, sel: [], zoom: 1, form: { name: S.me.name || '', phone: '', note: '', consent: false }, result: null };
+  return { step: 1, admin: !!admin, checkIn: addDays(t, 1), checkOut: addDays(t, 2), adults: 2, children: 0, stayType: '', tarpWant: false, tarpSel: [], pickMode: 'TENT', avail: null, sel: [], zoom: 1, form: { name: S.me.name || '', phone: '', note: '', consent: false }, result: null };
 }
 function pageBook(opts) {
   if (opts && opts.admin) S.book = newBook(true);
@@ -277,7 +277,7 @@ function bookFrame(inner) {
   let h = '';
   if (B.step === 1 && !S.me.adminConfigured) h += `<div class="warn" style="margin-bottom:12px">ยังไม่ได้ตั้งแอดมิน — LINE User ID ของคุณคือ <b style="word-break:break-all">${esc(S.me.userId)}</b><br>นำไปใส่ในชีต Settings ช่อง ADMIN_LINE_USER_IDS เพื่อเปิดแดชบอร์ด</div>`;
   if (B.admin) h += `<div class="warn" style="margin-bottom:12px">โหมดแอดมิน: การจองจะยืนยันทันที (ไม่ผ่านขั้นตอนชำระเงิน) <a href="#" onclick="S.book=null;go('admin');return false">ยกเลิก</a></div>`;
-  h += `<div class="hero"><div class="hero-t">${esc(c.campName)}</div><div class="hero-s">${B.admin ? 'จองแทนลูกค้า' : 'จองที่พัก'} · เช็คอิน ${esc(c.checkinTime)} · เช็คเอาท์ ${esc(c.checkoutTime)}${c.contactPhone ? ' · โทร ' + esc(c.contactPhone) : ''}</div></div>`;
+  h += `<div class="hero"><div class="hero-t">จองที่พัก ภูชาโลม โฮมสเตย์</div><div class="hero-s">เช็คอิน ${esc(c.checkinTime)} เช็คเอาท์ ${esc(c.checkoutTime)}</div></div>`;
   h += '<div class="steps">' + BOOK_STEPS.map((t, i) => { const n = i + 1; return `<div class="step ${B.step > n ? 'done' : B.step === n ? 'on' : ''}"><i>${B.step > n ? '✓' : n}</i>${t}</div>`; }).join('') + '</div>';
   $('#app').innerHTML = h + inner;
 }
@@ -285,7 +285,7 @@ function bookFrame(inner) {
 /* ----- ขั้นที่ 1: วันที่ ----- */
 function stepDates() {
   const B = S.book;
-  bookFrame(`<div class="card"><h2 class="ttl">📅 เลือกวันเข้าพัก</h2><p class="sub">แตะวันเช็คอิน แล้วแตะวันเช็คเอาท์ · วันเช็คเอาท์ไม่นับเป็นคืนที่จอง</p>
+  bookFrame(`<div class="card"><h2 class="ttl">📅 เลือกวันเข้าพัก</h2>
   <div class="calhead"><div><span>เช็คอิน</span><b id="chi"></b></div><div class="arrow">→</div><div><span>เช็คเอาท์</span><b id="cho"></b></div></div>
   <div class="calwrap" id="calwrap"></div><div id="msg" style="margin-top:10px"></div>
   <button class="btn" id="calok" onclick="datesNext()" style="margin-top:10px">ตกลง</button></div>`);
@@ -344,29 +344,23 @@ function datesNext() {
 function stepGuests() {
   const B = S.book;
   const stp = (k, v) => `<div class="stepper"><button onclick="bk('${k}',-1)" aria-label="ลด">−</button><span>${v}</span><button onclick="bk('${k}',1)" aria-label="เพิ่ม">+</button></div>`;
-  bookFrame(`<div class="card"><h2 class="ttl">👥 จำนวนผู้เข้าพัก</h2><p class="sub">ใช้คำนวณว่าที่พักที่เลือกรองรับได้พอหรือไม่</p>
-  <label>ประเภทที่พัก</label><select id="staytype" onchange="changeStayType(this.value)">${Object.entries(STAY_META).map(([id, x]) => `<option value="${id}" ${B.stayType === id ? 'selected' : ''}>${esc(x[0])} — ${esc(x[1])}</option>`).join('')}</select>
+  bookFrame(`<div class="card"><h2 class="ttl">👥 จำนวนผู้เข้าพัก</h2>
   <div class="kv" style="align-items:center"><span>ผู้ใหญ่<br><small class="muted">อายุ 12 ปีขึ้นไป</small></span>${stp('adults', B.adults)}</div>
   <div class="kv" style="align-items:center"><span>เด็ก<br><small class="muted">ต่ำกว่า 5 ปีไม่คิดค่าบริการสำหรับเต็นท์ส่วนตัว/คาร์แคมป์</small></span>${stp('children', B.children)}</div>
   <div class="nights">รวม <b>${B.adults + B.children}</b> คน</div>
-  ${B.stayType === 'OWN_TENT' ? `<div class="card" style="margin-top:12px;background:var(--sand)"><b>ต้องการพื้นที่กางทาร์ปเพิ่มเติมไหม?</b><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" style="width:auto" ${B.tarpWant ? 'checked' : ''} onchange="toggleTarp(this.checked)"> ต้องการเลือกพื้นที่กางทาร์ป 4×4 เมตรเพิ่มเติม</label></div>` : ''}
   <div id="gmsg"></div><div class="row"><button class="btn sec" onclick="setStep(1)">← ย้อนกลับ</button><button class="btn" onclick="guestsNext()">ถัดไป →</button></div></div>`);
 }
 function bk(k, d) { const B = S.book; B[k] = Math.max(k === 'adults' ? 1 : 0, Math.min(40, B[k] + d)); stepGuests(); }
 function changeStayType(v) { const B = S.book; B.stayType = v; B.tarpWant = false; B.tarpSel = []; B.pickMode = 'TENT'; B.avail = null; B.sel = []; stepGuests(); }
-function toggleTarp(on) { const B = S.book; B.tarpWant = !!on; B.tarpSel = []; B.pickMode = 'TENT'; }
+function toggleTarp(on) { const B = S.book; B.tarpWant = !!on; B.tarpSel = []; B.pickMode = 'TENT'; updateSel(); }
 function guestsNext() {
-  const B = S.book;
-  if (['OWN_TENT','RENTAL_TENT'].includes(B.stayType) && B.children > B.adults * 3) {
-    $('#gmsg').innerHTML = toast('ผู้ใหญ่ 1 คนมีเด็กตามได้ไม่เกิน 3 คน กรุณาปรับจำนวนผู้เข้าพัก'); return;
-  }
   setStep(3);
 }
 
 /* ----- ขั้นที่ 3: เลือกตำแหน่งบนผัง ----- */
 async function loadAvail(errSel) {
   const B = S.book;
-  const r = await run(() => api('availability', { checkIn: B.checkIn, checkOut: B.checkOut, allowPast: B.admin, stayType: B.stayType, adults: B.adults, children: B.children }), errSel);
+  const r = await run(() => api('availability', { checkIn: B.checkIn, checkOut: B.checkOut, allowPast: B.admin, stayType: '', adults: B.adults, children: B.children }), errSel);
   if (!r) return false;
   (r.units || []).forEach(u => { if (!u.status) u.status = u.available === false ? 'BOOKED' : 'FREE'; });
   B.avail = r; return true;
@@ -395,10 +389,10 @@ function renderMapStep(notice) {
     if (p) pins.push(`<button class="pin ${u.status}" data-u="${esc(u.unitId)}" style="left:${p[0]}%;top:${p[1]}%" onclick="onPin('${esc(u.unitId)}')" aria-label="${esc(u.name)} ${ST_TXT[u.status]}">${esc(pinLbl(u))}</button>`);
     else off.push(`<button class="chipu ${u.status}" data-u="${esc(u.unitId)}" onclick="onPin('${esc(u.unitId)}')">${esc(u.name)}</button>`);
   });
-  bookFrame(`<div class="card"><h2 class="ttl">⛺ เลือกตำแหน่งที่พัก</h2><p class="sub">${esc(STAY_META[B.stayType][0])} · แตะผังเพื่อเลือกที่พัก (กดอีกครั้งเพื่อยกเลิก) · ${a.nights} คืน</p>
-  ${B.stayType === 'OWN_TENT' && B.tarpWant ? `<div class="tabs"><button class="${B.pickMode === 'TENT' ? 'on' : ''}" onclick="setPickMode('TENT')">1. เลือกล็อกเต็นท์</button><button class="${B.pickMode === 'TARP' ? 'on' : ''}" onclick="setPickMode('TARP')">2. เลือกล็อกกางทาร์ป</button></div><div class="muted" style="font-size:12px;margin-bottom:8px">สีเขียว = ล็อกเต็นท์ · สีม่วง = ล็อกทาร์ป (ต้องเป็นคนละล็อก)</div>` : ''}
+  bookFrame(`<div class="card"><h2 class="ttl">⛺ เลือกตำแหน่งที่พัก</h2><p class="sub">แตะตำแหน่งที่ต้องการบนผัง ระบบจะเลือกประเภทที่พักตามโซนให้อัตโนมัติ · ${a.nights} คืน</p>
+  <div id="tarpcontrol"></div>
   ${notice ? `<div class="warn" style="margin-bottom:10px">${esc(notice)}</div>` : ''}
-  ${!shown.length ? `<div class="warn" style="margin-bottom:10px">ยังไม่มีตำแหน่งที่เปิดให้จองสำหรับ ${esc(STAY_META[B.stayType][0])} กรุณาติดต่อที่พัก</div>` : ''}
+  ${!shown.length ? `<div class="warn" style="margin-bottom:10px">ยังไม่มีตำแหน่งที่เปิดให้จอง กรุณาติดต่อที่พัก</div>` : ''}
   <div class="mapbox"><div class="mapscroll" id="mapscroll"><div class="map" id="map"><img src="${MAP_IMG}" alt="แผนผังลานกางเต็นท์" draggable="false">${pins.join('')}</div></div>
   <div class="maptoast" id="maptoast"></div></div>
   <div class="legend2"><span class="lg FREE">ว่าง</span><span class="lg HOLD">รอชำระ</span><span class="lg BOOKED">จองแล้ว</span><span class="lg CLOSED">ปิดปรับปรุง</span></div>
@@ -445,13 +439,29 @@ function onPin(id) {
   }
   if (B.tarpSel.includes(id)) return mapToast('ล็อกนี้เลือกเป็นพื้นที่กางทาร์ปแล้ว กรุณาเลือกล็อกอื่น');
   const i = B.sel.indexOf(id);
-  if (i >= 0) B.sel.splice(i, 1);
+  if (i >= 0) {
+    B.sel.splice(i, 1);
+    if (!B.sel.length) { B.stayType = ''; B.tarpWant = false; B.tarpSel = []; B.pickMode = 'TENT'; }
+  }
   else {
+    const type = unitStayType(u);
+    if (!type) return mapToast('ไม่พบประเภทที่พักของตำแหน่งนี้');
+    if (B.stayType && B.stayType !== type) return mapToast('กรุณาเลือกตำแหน่งประเภทเดียวกันในการจองหนึ่งรายการ');
+    if (['OWN_TENT','RENTAL_TENT'].includes(type) && B.children > B.adults * 3) return mapToast('ผู้ใหญ่ 1 คนมีเด็กตามได้ไม่เกิน 3 คน กรุณากลับไปแก้จำนวนผู้เข้าพัก');
+    B.stayType = type;
     const maxTent = ['OWN_TENT','RENTAL_TENT'].includes(B.stayType) ? B.adults : S.cfg.maxUnits;
     if (B.sel.length >= maxTent) return mapToast('จองเกินจำนวนผู้เข้าพัก ผู้ใหญ่ ' + B.adults + ' คน จองได้สูงสุด ' + maxTent + ' ล็อก');
     B.sel.push(id);
   }
   updateSel();
+}
+function unitStayType(u) {
+  const z = String(u.zone || '').toUpperCase();
+  if (['บ้านพัก','HOUSE','H'].includes(z)) return 'HOUSE';
+  if (['A','D'].includes(z)) return 'OWN_TENT';
+  if (['B','C'].includes(z)) return 'RENTAL_TENT';
+  if (z === 'P') return 'CAR_CAMP';
+  return '';
 }
 function setPickMode(mode) { S.book.pickMode = mode; renderMapStep(''); }
 function selUnits() { const B = S.book; return B.sel.map(id => B.avail.units.find(u => u.unitId === id)).filter(Boolean); }
@@ -464,7 +474,7 @@ function guestText(B) { return `ผู้ใหญ่ ${B.adults} คน` + (B.c
 function sumRows(B, sel, tot, perUnit) {
   return `<div class="sumrow"><span>📅 วันเข้าพัก</span><b>${fmtDate(B.checkIn, 1)}</b></div><div class="sumrow"><span>📅 วันออก</span><b>${fmtDate(B.checkOut, 1)}</b></div>
   <div class="sumrow"><span>🌙 จำนวนคืน</span><b>${B.avail.nights} คืน</b></div>
-  <div class="sumrow"><span>🏕️ ประเภท</span><b>${esc(STAY_META[B.stayType][0])}</b></div>
+  ${B.stayType ? `<div class="sumrow"><span>🏕️ ประเภท</span><b>${esc(STAY_META[B.stayType][0])}</b></div>` : ''}
   <div class="sumrow"><span>👥 จำนวนผู้เข้าพัก</span><b>${guestText(B)}</b></div>
   <div class="sumrow"><span>⛺ ตำแหน่งที่พัก</span><b>${sel.length ? sel.map(u => esc(u.name) + ' (' + esc(zoneLbl(u.zone)) + ')').join(', ') : '-'}</b></div>
   ${B.tarpWant ? `<div class="sumrow"><span>🔶 พื้นที่กางทาร์ป</span><b>${tarpUnits().length ? tarpUnits().map(u => esc(u.name)).join(', ') : 'ยังไม่ได้เลือก'}</b></div>` : ''}
@@ -473,6 +483,8 @@ function sumRows(B, sel, tot, perUnit) {
 }
 function updateSel() {
   const B = S.book, sel = selUnits();
+  const tc = $('#tarpcontrol');
+  if (tc) tc.innerHTML = B.stayType === 'OWN_TENT' ? `<div class="card" style="background:var(--sand);margin:8px 0"><b>ต้องการพื้นที่กางทาร์ปเพิ่มเติมไหม?</b><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" style="width:auto" ${B.tarpWant ? 'checked' : ''} onchange="toggleTarp(this.checked)"> ต้องการเลือกพื้นที่กางทาร์ป 4×4 เมตรเพิ่มเติม</label>${B.tarpWant ? `<div class="tabs" style="margin-top:8px"><button class="${B.pickMode === 'TENT' ? 'on' : ''}" onclick="setPickMode('TENT')">1. เลือกล็อกเต็นท์</button><button class="${B.pickMode === 'TARP' ? 'on' : ''}" onclick="setPickMode('TARP')">2. เลือกล็อกกางทาร์ป</button></div><div class="muted" style="font-size:12px">สีเขียว = ล็อกเต็นท์ · สีม่วง = ล็อกทาร์ป</div>` : ''}</div>` : '';
   document.querySelectorAll('[data-u]').forEach(el => { el.classList.toggle('sel', B.sel.includes(el.dataset.u)); el.classList.toggle('tarp-sel', B.tarpSel.includes(el.dataset.u)); });
   const tentType = ['OWN_TENT','RENTAL_TENT'].includes(B.stayType), g = B.adults + B.children;
   const minLocks = tentType ? Math.ceil(g / 4) : 1, maxLocks = tentType ? B.adults : S.cfg.maxUnits;
