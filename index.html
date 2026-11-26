@@ -142,7 +142,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v27-pricing-rules-2026-11-26';
+const WEB_VERSION = 'v29-admin-link-2026-11-26';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -835,7 +835,13 @@ async function confirmResch(ref) {
 }
 
 /* ===================== 5) แดชบอร์ดแอดมิน ===================== */
+function urlParam_(k) {
+  const q = new URLSearchParams(location.search); let v = q.get(k);
+  if (!v) { const st = q.get('liff.state'); if (st) { try { v = new URLSearchParams(decodeURIComponent(st).replace(/^\/?\?/, '')).get(k); } catch (e) { } } }
+  return v;
+}
 async function pageAdmin() {
+  if (!S.tabFromUrl) { S.tabFromUrl = 1; const t = urlParam_('tab'); if (['pay', 'today', 'list', 'cal'].includes(t)) S.admin.tab = t; }
   if (!S.me.isAdmin) return go('book');
   const A = S.admin;
   $('#app').innerHTML = '<div id="msg"></div><div id="adm"></div>';
@@ -849,10 +855,11 @@ async function loadDash() {
 function renderAdmin() {
   const A = S.admin, d = A.data, k = d.kpi;
   const [y, m] = d.month.split('-').map(Number);
-  const tabs = [['cal', 'ปฏิทินการจอง'], ['pay', `รอตรวจสลิป${k.pendingReview ? ' (' + k.pendingReview + ')' : ''}`], ['list', 'รายการจองทั้งหมด'], ['today', 'วันนี้'], ['pricing', 'ปรับราคา']];
+  const tabs = [['cal', 'ปฏิทินการจอง'], ['pay', `รอตรวจสลิป${k.pendingReview ? ' (' + k.pendingReview + ')' : ''}`], ['list', 'รายการจองทั้งหมด'], ['today', 'วันนี้' + ((d.balanceAlerts || []).length ? ' (⚠ ' + d.balanceAlerts.length + ')' : '')], ['pricing', 'ปรับราคา']];
   if (S.me.role === 'SUPER_ADMIN') tabs.push(['admins', 'จัดการแอดมิน']);
   $('#adm').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h1>ระบบจองห้องพักภูชาโลม โฮมสเตย์ · ${esc(S.me.adminName || S.me.name || '')}</h1></div>
   <button class="btn sm" onclick="go('book',{admin:true})">+ จองแทนลูกค้า</button></div>
+  ${balanceBanner(d)}
   <div class="${d.houseSeasonActive ? 'warn' : 'ok'}" style="margin-bottom:12px">💰 ${esc(d.pricingNotice)}</div>
   <div class="kpis"><div class="card"><div class="muted">อัตราเข้าพัก ${TH_MONTH_FULL[m - 1]}</div><div class="big">${(k.occupancy * 100).toFixed(1)}%</div><div class="muted" style="font-size:12px">${k.occupiedNights} จาก ${k.unitCount * d.days.length} ห้อง-คืน</div></div>
   <div class="card"><div class="muted">รับชำระแล้ว (เช็คอินเดือนนี้)</div><div class="big">${money(k.paid)}</div><div class="muted" style="font-size:12px">${k.bookingCount} การจอง · ยืนยัน ${k.confirmed}</div></div>
@@ -919,10 +926,32 @@ async function review(pid, decision) {
   const r = await run(() => api('adminReviewPayment', { paymentId: pid, decision, reason })); if (!r) return;
   closeModal(); await loadDash();
 }
+function unitLbl_(d, id) { const u = (d.units || []).find(x => x.unitId === id); return u ? u.name + ' (' + zoneLbl(u.zone) + ')' : id; }
+function balanceBanner(d) {
+  const a = d.balanceAlerts || []; if (!a.length) return '';
+  return `<div class="warn" style="margin-bottom:12px;border:2px solid var(--bad,#c0392b)"><b>⚠️ ถึงวันเข้าพักแล้วแต่ยังค้างชำระ ${a.length} รายการ — ห้ามปล่อยที่พักจนกว่าจะชำระครบ</b>${a.map(b => `<div style="margin-top:6px">• ${esc(b.ref)} · ${esc(b.name)} · <b>${b.units.map(id => esc(unitLbl_(d, id))).join(', ')}</b> · ค้างชำระ <b>${money(b.balance)}</b></div>`).join('')}<div style="margin-top:8px"><button class="btn sm" onclick="S.admin.tab='today';renderAdmin()">ไปหน้าเช็คอิน</button></div></div>`;
+}
+function arrivalCard_(d, b) {
+  const names = b.units.map(id => esc(unitLbl_(d, id))).join(', ');
+  const confirmed = b.status === 'CONFIRMED', due = b.balance > 0, started = b.checkIn <= d.today;
+  let act = '';
+  if (b.checkedInAt) act = `<div class="ok" style="margin-top:8px">✅ เช็คอินแล้ว ${esc(b.checkedInAt)}</div>`;
+  else if (!confirmed) act = `<div class="warn" style="margin-top:8px">การจองยังไม่ยืนยัน (${STATUS_TH[b.status] || b.status}) — ยังปล่อยที่พักไม่ได้</div>`;
+  else if (due) act = `<div class="warn" style="margin-top:8px;border:2px solid var(--bad,#c0392b)"><b>⚠️ ค้างชำระ ${money(b.balance)}</b> (ยอดรวม ${money(b.total)} · ชำระแล้ว ${money(b.paid)})<br>ที่พัก: <b>${names}</b><br>ต้องรับชำระยอดที่เหลือและอนุมัติสลิปก่อน จึงจะปล่อยที่พักได้</div><button class="btn" style="margin-top:8px" disabled>🔒 เช็คอินไม่ได้ — ยังค้างชำระ</button><button class="btn sec" style="margin-top:6px" onclick="openAdminBookingRef('${esc(b.ref)}')">เปิดรายการเพื่อตรวจ/อนุมัติสลิป</button>`;
+  else if (started) act = `<div class="ok" style="margin-top:8px">ชำระครบแล้ว ${money(b.paid)}</div><button class="btn" style="margin-top:8px" onclick="adminCheckIn('${esc(b.ref)}')">✅ เช็คอิน / ปล่อยที่พักให้ลูกค้า</button>`;
+  return `<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(b.name)}</b><span class="chip ${b.status}">${STATUS_TH[b.status]}</span></div><div class="muted" style="font-size:13px">${esc(b.ref)} · ที่พัก ${names} · ${esc(b.phone)}</div>${act}</div>`;
+}
+async function adminCheckIn(ref) {
+  if (!confirm('ยืนยันเช็คอินและปล่อยที่พักให้ลูกค้า?')) return;
+  const r = await run(() => api('adminCheckIn', { ref })); if (!r) return;
+  closeModal(); await loadDash(); S.admin.tab = 'today'; renderAdmin();
+}
 function tabToday() {
-  const d = S.admin.data;
-  const lst = (t, a, kind) => `<h2>${t} (${a.length})</h2>` + (a.length ? a.map(b => `<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(b.name)}</b><span class="chip ${b.status}">${STATUS_TH[b.status]}</span></div><div class="muted" style="font-size:13px">${esc(b.ref)} · ห้อง ${b.units.map(id => esc((d.units.find(u => u.unitId === id) || {}).name || id)).join(', ')} · ${esc(b.phone)}</div>${b.balance > 0 ? `<div class="warn" style="margin-top:6px">ค้างชำระ ${money(b.balance)}</div>` : ''}</div>`).join('') : '<div class="card muted">ไม่มี</div>');
-  $('#tab').innerHTML = `<div class="row" style="align-items:flex-start"><div>${lst('เช็คอินวันนี้', d.arrivalsToday)}</div><div>${lst('เช็คเอาท์วันนี้', d.departuresToday)}</div></div>`;
+  const d = S.admin.data, a = d.arrivalsToday || [];
+  const dep = d.departuresToday || [];
+  const lst = (t, arr, fn) => `<h2>${t} (${arr.length})</h2>` + (arr.length ? arr.map(fn).join('') : '<div class="card muted">ไม่มีรายการ</div>');
+  const depCard = b => `<div class="card"><div style="display:flex;justify-content:space-between"><b>${esc(b.name)}</b><span class="chip ${b.status}">${STATUS_TH[b.status]}</span></div><div class="muted" style="font-size:13px">${esc(b.ref)} · ที่พัก ${b.units.map(id => esc(unitLbl_(d, id))).join(', ')} · ${esc(b.phone)}</div>${b.balance > 0 ? `<div class="warn" style="margin-top:6px">ค้างชำระ ${money(b.balance)}</div>` : ''}</div>`;
+  $('#tab').innerHTML = `<div class="row" style="align-items:flex-start"><div>${lst('เช็คอินวันนี้', a, b => arrivalCard_(d, b))}</div><div>${lst('เช็คเอาท์วันนี้', dep, depCard)}</div></div>`;
 }
 async function tabList() {
   const A = S.admin;
@@ -939,11 +968,12 @@ async function openAdminBookingRef(ref) {
   modal(bookingDetailHtml(b) + `<div class="kv"><span>ที่มา</span><b>${esc(b.source)}</b></div>${b.note ? `<div class="kv"><span>หมายเหตุ</span><b>${esc(b.note)}</b></div>` : ''}${acts ? `<h3 style="margin-top:16px">ผู้ดำเนินการ</h3>${acts}` : ''}
   <div class="stack" style="margin-top:14px">
   ${b.payments.filter(p => p.hasSlip).map(p => `<button class="btn sec" onclick="viewSlip('${p.id}')">ดูสลิป ${money(p.amount)} (${STATUS_TH[p.status]})</button>`).join('')}
+  ${b.checkedInAt ? `<div class="ok">✅ เช็คอินแล้ว ${esc(b.checkedInAt)} โดย ${esc(b.checkedInBy)}</div>` : (b.status === 'CONFIRMED' && b.checkIn <= S.admin.data.today ? (b.balance > 0 ? `<div class="warn"><b>⚠️ ค้างชำระ ${money(b.balance)}</b> — ยังปล่อยที่พักไม่ได้</div>` : `<button class="btn" onclick="adminCheckIn('${esc(b.ref)}')">✅ เช็คอิน / ปล่อยที่พัก</button>`) : '')}
   ${pend.map(p => `<div class="row"><button class="btn sm" onclick="review('${p.id}','APPROVE')">อนุมัติ ${money(p.amount)}</button><button class="btn bad sm" onclick="review('${p.id}','REJECT')">ปฏิเสธ</button></div>`).join('')}
   ${act ? `<button class="btn sec" onclick="adminMove('${esc(b.ref)}','${b.checkIn}')">เลื่อนวันเข้าพัก (แอดมิน)</button><button class="btn sec" style="color:var(--bad);border-color:var(--bad)" onclick="adminCancel('${esc(b.ref)}')">ยกเลิกการจอง</button>` : ''}
   <button class="btn sec" onclick="closeModal()">ปิด</button></div>`);
 }
-function adminActionText(a) { return ({ BOOKING_CREATED_BY_ADMIN:'รับจองโดย', PAYMENT_APPROVED:'อนุมัติสลิปโดย', PAYMENT_REJECTED:'ปฏิเสธสลิปโดย', BOOKING_RESCHEDULED_BY_ADMIN:'เลื่อนวันโดย', BOOKING_CANCELLED_BY_ADMIN:'ยกเลิกโดย' })[a] || a; }
+function adminActionText(a) { return ({ BOOKING_CREATED_BY_ADMIN:'รับจองโดย', PAYMENT_APPROVED:'อนุมัติสลิปโดย', PAYMENT_REJECTED:'ปฏิเสธสลิปโดย', BOOKING_RESCHEDULED_BY_ADMIN:'เลื่อนวันโดย', BOOKING_CANCELLED_BY_ADMIN:'ยกเลิกโดย', BOOKING_CHECKED_IN:'เช็คอิน/ปล่อยที่พักโดย' })[a] || a; }
 async function tabPricing() {
   $('#tab').innerHTML = '<div class="card muted" style="text-align:center">กำลังโหลดราคา…</div>';
   const p = await run(() => api('adminPricing'), '#msg'); if (!p) return;
