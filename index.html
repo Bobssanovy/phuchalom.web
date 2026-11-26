@@ -108,6 +108,16 @@ h2.ttl{margin:0 0 2px;font-size:18px}
 .pin.tarp-sel,.chipu.tarp-sel{background:#7b3fb3!important;border-color:#fff;transform:translate(-50%,-50%) scale(1.2);box-shadow:0 0 0 2px #fff,0 0 0 4px #d8b4fe;z-index:7}
 @keyframes selpulse{50%{box-shadow:0 0 0 2px #fff,0 0 0 6px rgba(255,210,63,.6),0 0 14px 7px rgba(255,210,63,.5)}}
 .pin.sel::after{content:'✓';position:absolute;right:-6px;top:-8px;width:calc(var(--mw)*.0135);height:calc(var(--mw)*.0135);min-width:12px;min-height:12px;border-radius:50%;background:#2e8b57;border:1.5px solid #fff;color:#fff;font-size:max(8px,calc(var(--mw)*.0085));display:flex;align-items:center;justify-content:center;line-height:1}
+/* v30: ผังที่พัก — ไม่มีวงกลม เหลือเฉพาะเลขบนเต็นท์ · เลือกแล้วมีกรอบสีขาวล้อมเต็นท์ */
+button.pin{background:transparent!important;border:2px solid transparent;border-radius:5px;box-shadow:none;animation:none;
+  width:calc(var(--mw)*.029);height:calc(var(--mw)*.036);min-width:13px;min-height:16px;letter-spacing:-.3px;
+  font-size:max(7px,calc(var(--mw)*.0135));line-height:1;color:#fff;-webkit-text-stroke:clamp(2px,calc(var(--mw)*.004),3px) var(--pc,#2f7d24);paint-order:stroke fill;text-shadow:none;-webkit-tap-highlight-color:transparent}
+button.pin.FREE{--pc:#2f7d24}button.pin.HOLD{--pc:#c57d00}button.pin.BOOKED{--pc:#b3261e;opacity:.8}button.pin.CLOSED{--pc:#6b746d;opacity:.8}
+button.pin.sel,button.pin.tarp-sel{transform:translate(-50%,-50%);z-index:6;background:rgba(255,255,255,.22)!important;border:2.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.35)}
+button.pin.tarp-sel{border-style:dashed;--pc:#7b3fb3;z-index:7}
+button.pin.sel::after{display:none}
+button.pin.sel[data-u^="unit-A-"],button.pin.sel[data-u^="unit-B-"],button.pin.sel[data-u^="unit-C-"],button.pin.sel[data-u^="unit-D-"]{height:calc(var(--mw)*.040);margin-top:calc(var(--mw)*.004)}
+button.pin.sel{align-items:flex-start;padding-top:calc(var(--mw)*.004)}
 .mapctl{position:absolute;right:10px;bottom:12px;display:flex;flex-direction:column;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.3);overflow:hidden}
 .mapctl button{width:38px;height:38px;border:0;background:#fff;font-size:22px;line-height:1;cursor:pointer;color:var(--ink)}.mapctl button+button{border-top:1px solid var(--line)}
 .maptoast{position:absolute;left:10px;right:60px;bottom:12px;background:rgba(31,42,36,.92);color:#fff;border-radius:10px;padding:8px 12px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s}.maptoast.on{opacity:1}
@@ -142,7 +152,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v29-admin-link-2026-11-26';
+const WEB_VERSION = 'v30-map-pins-2026-11-26';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
