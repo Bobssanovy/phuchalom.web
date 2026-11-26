@@ -142,7 +142,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v26-qr-save-fix-2026-11-19';
+const WEB_VERSION = 'v27-pricing-rules-2026-11-26';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -345,16 +345,17 @@ function stepGuests() {
   const B = S.book;
   const stp = (k, v) => `<div class="stepper"><button onclick="bk('${k}',-1)" aria-label="ลด">−</button><span>${v}</span><button onclick="bk('${k}',1)" aria-label="เพิ่ม">+</button></div>`;
   bookFrame(`<div class="card"><h2 class="ttl">👥 จำนวนผู้เข้าพัก</h2>
-  <div class="kv" style="align-items:center"><span>ผู้ใหญ่<br><small class="muted">อายุ 12 ปีขึ้นไป · 200 บาท/คน/คืน</small></span>${stp('adults', B.adults)}</div>
-  <div class="kv" style="align-items:center"><span>เด็กโต<br><small class="muted">อายุ 6–11 ปี · 100 บาท/คน/คืน</small></span>${stp('olderChildren', B.olderChildren)}</div>
-  <div class="kv" style="align-items:center"><span>เด็กเล็ก<br><small class="muted">อายุ 0–5 ปี · ฟรี</small></span>${stp('youngChildren', B.youngChildren)}</div>
+  <div class="kv" style="align-items:center"><span>ผู้ใหญ่<br><small class="muted">อายุ 12 ปีขึ้นไป</small></span>${stp('adults', B.adults)}</div>
+  <div class="kv" style="align-items:center"><span>เด็กโต<br><small class="muted">อายุ 6–11 ปี</small></span>${stp('olderChildren', B.olderChildren)}</div>
+  <div class="kv" style="align-items:center"><span>เด็กเล็ก<br><small class="muted">อายุ 0–5 ปี</small></span>${stp('youngChildren', B.youngChildren)}</div>
   <div class="nights">รวม <b>${guestCount(B)}</b> คน</div>
+  <div class="card" style="background:var(--sand);font-size:13px;line-height:1.6"><b>💰 อัตราค่าที่พัก</b><br>⛺ <b>นำเต็นท์มาเอง</b> คิดรายคน/คืน: อายุ 0–5 ปี ฟรี · 6–11 ปี ${money(Number(S.cfg.pricing.olderChild || 100))} · 12 ปีขึ้นไป ${money(Number(S.cfg.pricing.ownTentPerson || 200))}<br>🏕️ <b>เต็นท์เช่า</b> ราคาเหมา ${money(Number(S.cfg.pricing.rentalTent || 800))}/หลัง/คืน (ผู้ใหญ่ 2 + เด็ก 0–11 ปี 2 = 4 คน)<br>🏠 <b>บ้านพัก</b> ราคาเหมาต่อหลัง พักได้ 2–3 คน · เตียงเสริม 3.5 ฟุต ${money(Number(S.cfg.pricing.extraBed || 350))}/เตียง (สูงสุด 2 เตียง/หลัง)</div>
   <div id="gmsg"></div><div class="row"><button class="btn sec" onclick="setStep(1)">← ย้อนกลับ</button><button class="btn" onclick="guestsNext()">ถัดไป →</button></div></div>`);
 }
 function bk(k, d) { const B = S.book; B[k] = Math.max(k === 'adults' ? 1 : 0, Math.min(40, B[k] + d)); stepGuests(); }
 function totalChildren(B) { return Number(B.youngChildren || 0) + Number(B.olderChildren || 0); }
 function guestCount(B) { return Number(B.adults || 0) + totalChildren(B); }
-function changeStayType(v) { const B = S.book; B.stayType = v; B.tarpWant = false; B.tarpSel = []; B.pickMode = 'TENT'; B.avail = null; B.sel = []; stepGuests(); }
+function changeStayType(v) { const B = S.book; B.stayType = v; B.tarpWant = false; B.tarpSel = []; B.pickMode = 'TENT'; B.avail = null; B.sel = []; B.extraBeds = 0; B.crowdKey = ''; B.crowdAns = ''; stepGuests(); }
 function toggleTarp(on) { const B = S.book; B.tarpWant = !!on; B.tarpSel = []; B.pickMode = 'TENT'; updateSel(); }
 function guestsNext() {
   setStep(3);
@@ -475,7 +476,8 @@ function selectionTotal(sel) {
   return main + beds + (B.tarpWant ? B.tarpSel.length * Number(S.cfg.pricing.tarpLock || 0) * B.avail.nights : 0);
 }
 function guestText(B) { return `ผู้ใหญ่ ${B.adults} คน, เด็กโต ${B.olderChildren || 0} คน, เด็กเล็ก ${B.youngChildren || 0} คน`; }
-function setExtraBeds(n) { const B = S.book, max = Math.min(2, selUnits().length * 2); B.extraBeds = Math.max(0, Math.min(max, Number(n) || 0)); updateSel(); }
+function crowdAnswer(a) { const B = S.book; B.crowdAns = a; if (a === 'no' && B.stayType === 'HOUSE') B.extraBeds = 0; updateSel(); }
+function setExtraBeds(n) { const B = S.book, max = selUnits().length * 2; B.extraBeds = Math.max(0, Math.min(max, Number(n) || 0)); updateSel(); }
 function sumRows(B, sel, tot, perUnit) {
   return `<div class="sumrow"><span>📅 วันเข้าพัก</span><b>${fmtDate(B.checkIn, 1)}</b></div><div class="sumrow"><span>📅 วันออก</span><b>${fmtDate(B.checkOut, 1)}</b></div>
   <div class="sumrow"><span>🌙 จำนวนคืน</span><b>${B.avail.nights} คืน</b></div>
@@ -483,8 +485,9 @@ function sumRows(B, sel, tot, perUnit) {
   <div class="sumrow"><span>👥 จำนวนผู้เข้าพัก</span><b>${guestText(B)}</b></div>
   <div class="sumrow"><span>⛺ ตำแหน่งที่พัก</span><b>${sel.length ? sel.map(u => esc(u.name) + ' (' + esc(zoneLbl(u.zone)) + ')').join(', ') : '-'}</b></div>
   ${B.tarpWant ? `<div class="sumrow"><span>🔶 พื้นที่กางทาร์ป</span><b>${tarpUnits().length ? tarpUnits().map(u => esc(u.name)).join(', ') : 'ยังไม่ได้เลือก'}</b></div>` : ''}
-  ${B.stayType === 'HOUSE' ? `<div class="sumrow"><span>🛏️ เตียงเสริม</span><b>${B.extraBeds || 0} เตียง × ${money(Number(S.cfg.pricing.extraBed || 350))} / คืน</b></div>` : ''}
+  ${B.stayType === 'HOUSE' && B.extraBeds > 0 ? `<div class="sumrow"><span>🛏️ เตียงเสริม</span><b>${B.extraBeds || 0} เตียง × ${money(Number(S.cfg.pricing.extraBed || 350))} / คืน</b></div>` : ''}
   ${perUnit && sel.length > 1 && sel[0].priceMode !== 'PER_PERSON' ? sel.map(u => `<div class="sumrow sub2"><span>${esc(u.name)}</span><span>${money(u.total)}</span></div>`).join('') : ''}
+  ${B.crowded ? '<div class="sumrow"><span>⚠️ หมายเหตุ</span><b>ผู้เข้าพักเกินพื้นที่รองรับ</b></div>' : ''}
   <div class="sumtotal"><span>ราคารวม</span><b>${money(tot)}</b></div>`;
 }
 function updateSel() {
@@ -494,18 +497,26 @@ function updateSel() {
   document.querySelectorAll('[data-u]').forEach(el => { el.classList.toggle('sel', B.sel.includes(el.dataset.u)); el.classList.toggle('tarp-sel', B.tarpSel.includes(el.dataset.u)); });
   const houseType = B.stayType === 'HOUSE', tentType = ['OWN_TENT','RENTAL_TENT'].includes(B.stayType), g = guestCount(B);
   if (!houseType) B.extraBeds = 0;
-  if (houseType) B.extraBeds = Math.min(Number(B.extraBeds || 0), Math.min(2, sel.length * 2));
-  const minLocks = tentType ? Math.ceil(g / 4) : 1, maxLocks = tentType ? B.adults : S.cfg.maxUnits;
-  const cap = houseType ? sel.length * 2 + B.extraBeds : (tentType ? sel.length * 4 : sel.reduce((s, u) => s + u.capacity, 0)), tot = selectionTotal(sel);
+  if (houseType) B.extraBeds = Math.min(Number(B.extraBeds || 0), sel.length * 2);
+  const own = B.stayType === 'OWN_TENT', rental = B.stayType === 'RENTAL_TENT', n = sel.length, ch = totalChildren(B);
+  const minLocks = own ? Math.ceil(g / 4) : 1, maxLocks = tentType ? B.adults : S.cfg.maxUnits;
+  const key = [B.stayType, n, B.adults, ch].join(':'); if (B.crowdKey !== key) { B.crowdKey = key; B.crowdAns = ''; }
+  let crowded = false, needAns = false;
+  if (rental && n) { crowded = B.adults > 2 * n || ch > 2 * n; needAns = crowded; }
+  if (houseType && n) { crowded = g > 3 * n + B.extraBeds; needAns = g > 3 * n; if (!needAns) { B.extraBeds = 0; } }
+  const cap = (own || rental) ? Infinity : (houseType ? Infinity : sel.reduce((s, u) => s + u.capacity, 0)), tot = selectionTotal(sel);
+  B.crowded = crowded;
+  const ansOk = !needAns || (rental ? B.crowdAns === 'no' : (B.crowdAns === 'no' || (B.crowdAns === 'yes' && B.extraBeds > 0)));
   const lockOk = sel.length >= minLocks && sel.length <= maxLocks, tarpOk = !B.tarpWant || B.tarpSel.length > 0;
-  const ok = sel.length > 0 && cap >= g && lockOk && tarpOk;
+  const ok = sel.length > 0 && cap >= g && lockOk && tarpOk && ansOk;
   const cards = sel.length ? sel.map(u => `<div class="selcard"><div class="sc-l"><span class="sc-tag" style="background:${ZONE_CLR[u.zone] || 'var(--forest)'}">${esc(u.name)}</span><span class="sc-st">ว่าง</span></div>
-    <div class="sc-m"><b>${esc(zoneLbl(u.zone))}</b><div class="muted">👥 ${houseType ? 'รองรับ 2 คน' : (tentType ? '1 ล็อกอยู่ได้สูงสุด 4 คน' : 'รองรับ ' + u.capacity + ' คน')}</div><div class="muted">💰 ${money(u.perNight)} / คืน${u.priceMode === 'PER_PERSON' ? ' (ผู้ใหญ่ 200 · เด็กโต 100 · เด็กเล็กฟรี)' : ''}</div></div>
+    <div class="sc-m"><b>${esc(zoneLbl(u.zone))}</b><div class="muted">👥 ${houseType ? 'ราคาเหมาต่อหลัง · พักได้ 2-3 คน' : (rental ? 'เหมาหลังละ ' + money(Number(S.cfg.pricing.rentalTent || 800)) + ' · ผู้ใหญ่ 2 + เด็ก 2 (รวม 4 คน)' : (own ? '1 ล็อกอยู่ได้สูงสุด 4 คน' : 'รองรับ ' + u.capacity + ' คน'))}</div><div class="muted">💰 ${money(u.perNight)} / คืน${u.priceMode === 'PER_PERSON' ? ' (อายุ 12+ ปี 200 · 6–11 ปี 100 · 0–5 ปี ฟรี)' : ''}</div></div>
     <button class="sc-x" onclick="onPin('${esc(u.unitId)}')" title="กดเพื่อยกเลิก" aria-label="ยกเลิก ${esc(u.name)}">✓</button></div>`).join('')
     : '<div class="selhint">ยังไม่ได้เลือกที่พัก — แตะวงกลมสีเขียวบนผัง</div>';
   const tarpCards = B.tarpWant && B.tarpSel.length ? `<div class="card"><b>พื้นที่กางทาร์ปที่เลือก</b><div class="muted">${tarpUnits().map(u => esc(u.name)).join(', ')} · ${money(B.tarpSel.length * Number(S.cfg.pricing.tarpLock || 0) * B.avail.nights)}</div></div>` : '';
-  const bedControl = houseType && sel.length ? `<div class="card" style="background:var(--sand)"><b>บ้านพักรองรับ 2 คน/หลัง</b><p class="muted">ต้องการเตียงเสริมหรือไม่? เตียงละ ${money(Number(S.cfg.pricing.extraBed || 350))}/คืน เพิ่มได้สูงสุด 2 เตียง</p><div class="stepper"><button onclick="setExtraBeds(${B.extraBeds - 1})">−</button><span>${B.extraBeds}</span><button onclick="setExtraBeds(${B.extraBeds + 1})">+</button></div></div>` : '';
-  $('#selpanel').innerHTML = `${cards}${bedControl}${tarpCards}<div class="card sumcard"><h3>📋 สรุปรายการจอง</h3>${sumRows(B, sel, tot)}
+  const bedControl = houseType && needAns ? `<div class="card" style="background:var(--sand)"><b>ขอเตียงเสริม</b><p class="muted">บ้านพักพักได้ 2-3 คน/หลัง แต่มีผู้เข้าพัก ${g} คน ต้องการเตียงเสริมหรือไม่? (ขนาด 3.5 ฟุต ราคา ${money(Number(S.cfg.pricing.extraBed || 350))} ต่อ 1 เตียง/คืน เพิ่มได้สูงสุด 2 เตียงต่อหลัง)</p><div class="row"><button class="btn ${B.crowdAns === 'yes' ? '' : 'sec'}" onclick="crowdAnswer('yes')">ต้องการเตียงเสริม</button><button class="btn ${B.crowdAns === 'no' ? '' : 'sec'}" onclick="crowdAnswer('no')">ไม่ต้องการเตียงเสริม</button></div>${B.crowdAns === 'yes' ? `<div class="stepper" style="margin-top:8px"><button onclick="setExtraBeds(${B.extraBeds - 1})">−</button><span>${B.extraBeds} เตียง</span><button onclick="setExtraBeds(${B.extraBeds + 1})">+</button></div>` : ''}${B.crowdAns === 'no' ? '<p class="muted">คิดราคาเหมาบ้านทั้งหลัง ไม่เพิ่มเตียงเสริม (ผู้เข้าพักอาจแออัด)</p>' : ''}${B.crowdAns === 'yes' && !B.extraBeds ? '<p class="muted">กด + เพื่อเลือกจำนวนเตียงเสริม</p>' : ''}</div>` : '';
+  const rentalControl = rental && needAns ? `<div class="card" style="background:#fff7e6"><b>เนื่องจากคุณท่านได้มีจำนวนผู้เข้าพักมากกว่าพื้นที่รองรับได้ จะทำให้พื้นที่ในเต็นท์ค่อนข้างแออัด จึงเกรงว่าคุณท่านจะพักผ่อนได้ไม่เต็มที่ค่ะ ต้องการจองเพิ่มอีกหลังหรือไม่คะ</b><div class="row" style="margin-top:8px"><button class="btn ${B.crowdAns === 'more' ? '' : 'sec'}" onclick="crowdAnswer('more')">จองเพิ่ม</button><button class="btn ${B.crowdAns === 'no' ? '' : 'sec'}" onclick="crowdAnswer('no')">ไม่จองเพิ่ม</button></div>${B.crowdAns === 'more' ? '<p class="muted">แตะเต็นท์หลังอื่นบนผังเพื่อเลือกเพิ่ม</p>' : ''}${B.crowdAns === 'no' ? '<p class="muted">ยืนยันพักตามจำนวนที่เลือก (คิดราคาเหมาหลังละ ' + money(Number(S.cfg.pricing.rentalTent || 800)) + ')</p>' : ''}</div>` : '';
+  $('#selpanel').innerHTML = `${cards}${bedControl}${rentalControl}${tarpCards}<div class="card sumcard"><h3>📋 สรุปรายการจอง</h3>${sumRows(B, sel, tot)}
   ${sel.length < minLocks ? `<div class="warn" style="margin-top:10px">ผู้เข้าพัก ${g} คน ต้องจองอย่างน้อย ${minLocks} ล็อก — 1 ล็อกอยู่ได้สูงสุด 4 คน</div>` : ''}
   ${sel.length > maxLocks ? `<div class="warn" style="margin-top:10px">จองเกินจำนวนผู้เข้าพัก ผู้ใหญ่ ${B.adults} คน จองได้สูงสุด ${maxLocks} ล็อก</div>` : ''}
   ${B.tarpWant && !B.tarpSel.length ? `<div class="warn" style="margin-top:10px">กรุณากด “เลือกล็อกกางทาร์ป” แล้วเลือกพื้นที่เพิ่มเติมอย่างน้อย 1 ล็อก</div>` : ''}</div>
@@ -545,7 +556,7 @@ function stepConfirm() {
 async function submitBooking() {
   const B = S.book, f = B.form;
   f.name = $('#fn').value.trim(); f.phone = $('#fp').value.trim(); f.note = $('#fo').value.trim(); f.consent = B.admin ? true : $('#fc').checked;
-  const params = { checkIn: B.checkIn, checkOut: B.checkOut, unitIds: B.sel, tarpUnitIds: B.tarpWant ? B.tarpSel : [], adults: B.adults, children: totalChildren(B), youngChildren: B.youngChildren, olderChildren: B.olderChildren, extraBeds: B.extraBeds || 0, stayType: B.stayType, name: f.name, phone: f.phone, note: f.note, consent: f.consent, allowPast: B.admin };
+  const params = { checkIn: B.checkIn, checkOut: B.checkOut, unitIds: B.sel, tarpUnitIds: B.tarpWant ? B.tarpSel : [], adults: B.adults, children: totalChildren(B), youngChildren: B.youngChildren, olderChildren: B.olderChildren, extraBeds: B.extraBeds || 0, crowdedAck: !!B.crowded, stayType: B.stayType, name: f.name, phone: f.phone, note: f.note, consent: f.consent, allowPast: B.admin };
   busy(true);
   try {
     B.result = await api(B.admin ? 'adminCreateBooking' : 'createBooking', params);
