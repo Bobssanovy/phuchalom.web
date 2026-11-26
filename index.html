@@ -111,7 +111,7 @@ h2.ttl{margin:0 0 2px;font-size:18px}
 /* v31: ผังที่พัก — ไม่มีวงกลม เหลือเฉพาะตัวเลขในเต็นท์ · เลือกแล้วเส้นขอบเต็นท์เป็นสีขาวหนา */
 button.pin{outline:none;background:transparent!important;border:0;border-radius:0;box-shadow:none;animation:none;
   width:calc(var(--mw)*.032);height:calc(var(--mw)*.030);min-width:14px;min-height:13px;letter-spacing:0;
-  font-size:max(8px,calc(var(--mw)*.0145));line-height:1;font-weight:800;color:var(--pc,#1b5e20);-webkit-text-stroke:0;paint-order:stroke fill;
+  font-size:max(5.6px,calc(var(--mw)*.0102));line-height:1;font-weight:800;color:var(--pc,#1b5e20);-webkit-text-stroke:0;paint-order:stroke fill;
   text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff;-webkit-tap-highlight-color:transparent}
 button.pin.FREE{--pc:#14501a}button.pin.HOLD{--pc:#c26a00}button.pin.BOOKED{--pc:#c4160d;opacity:.85}button.pin.CLOSED{--pc:#6b746d;opacity:.8}
 button.pin[data-u^="unit-A-"],button.pin[data-u^="unit-B-"],button.pin[data-u^="unit-C-"],button.pin[data-u^="unit-D-"]{margin-top:calc(var(--mw)*.0105)}
@@ -155,7 +155,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v33-tent-outline-exact-2026-11-27';
+const WEB_VERSION = 'v35-tarp-adjacent-2026-11-27';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -370,6 +370,9 @@ function bk(k, d) { const B = S.book; B[k] = Math.max(k === 'adults' ? 1 : 0, Ma
 function totalChildren(B) { return Number(B.youngChildren || 0) + Number(B.olderChildren || 0); }
 function guestCount(B) { return Number(B.adults || 0) + totalChildren(B); }
 function changeStayType(v) { const B = S.book; B.stayType = v; B.tarpWant = false; B.tarpSel = []; B.pickMode = 'TENT'; B.avail = null; B.sel = []; B.extraBeds = 0; B.crowdKey = ''; B.crowdAns = ''; stepGuests(); }
+const lotNo = u => { const m = /(\d+)\s*$/.exec(String(u.name || '')); return m ? Number(m[1]) : NaN; };
+const lotsAdjacent = (a, b) => String(a.zone) === String(b.zone) && Math.abs(lotNo(a) - lotNo(b)) === 1;
+function tarpAdjacentOk(u) { const B = S.book; return B.sel.some(id => { const t = B.avail.units.find(x => x.unitId === id); return t && lotsAdjacent(t, u); }); }
 function toggleTarp(on) { const B = S.book; B.tarpWant = !!on; B.tarpSel = []; B.pickMode = 'TENT'; updateSel(); }
 function guestsNext() {
   setStep(3);
@@ -452,7 +455,9 @@ function onPin(id) {
   if (u.status !== 'FREE') return mapToast(u.name + ' · ' + ST_TXT[u.status] + (u.status === 'HOLD' ? ' (มีผู้กำลังจอง หากไม่ชำระจะว่างอีกครั้ง)' : ''));
   if (B.pickMode === 'TARP' && B.stayType === 'OWN_TENT' && B.tarpWant) {
     if (B.sel.includes(id)) return mapToast('ล็อกนี้เลือกเป็นพื้นที่เต็นท์แล้ว กรุณาเลือกล็อกอื่นสำหรับทาร์ป');
-    const ti = B.tarpSel.indexOf(id); if (ti >= 0) B.tarpSel.splice(ti, 1); else B.tarpSel.push(id);
+    const ti = B.tarpSel.indexOf(id);
+    if (ti >= 0) B.tarpSel.splice(ti, 1);
+    else { if (!tarpAdjacentOk(u)) return mapToast('พื้นที่กางทาร์ปต้องอยู่ติดกับล็อกเต็นท์ที่จอง (เช่น 1 กับ 2, 2 กับ 3) และอยู่โซนเดียวกัน'); B.tarpSel.push(id); }
     updateSel(); return;
   }
   if (B.tarpSel.includes(id)) return mapToast('ล็อกนี้เลือกเป็นพื้นที่กางทาร์ปแล้ว กรุณาเลือกล็อกอื่น');
@@ -506,8 +511,9 @@ function sumRows(B, sel, tot, perUnit) {
 }
 function updateSel() {
   const B = S.book, sel = selUnits();
+  if (B.tarpSel.length) { const keep = B.tarpSel.filter(id => { const u = B.avail.units.find(x => x.unitId === id); return u && tarpAdjacentOk(u); }); if (keep.length !== B.tarpSel.length) { B.tarpSel = keep; mapToast('ยกเลิกพื้นที่ทาร์ปที่ไม่ติดกับล็อกเต็นท์ที่เลือกแล้ว'); } }
   const tc = $('#tarpcontrol');
-  if (tc) tc.innerHTML = B.stayType === 'OWN_TENT' ? `<div class="card" style="background:var(--sand);margin:8px 0"><b>ต้องการพื้นที่กางทาร์ปเพิ่มเติมไหม?</b><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" style="width:auto" ${B.tarpWant ? 'checked' : ''} onchange="toggleTarp(this.checked)"> ต้องการเลือกพื้นที่กางทาร์ป 4×4 เมตรเพิ่มเติม</label>${B.tarpWant ? `<div class="tabs" style="margin-top:8px"><button class="${B.pickMode === 'TENT' ? 'on' : ''}" onclick="setPickMode('TENT')">1. เลือกล็อกเต็นท์</button><button class="${B.pickMode === 'TARP' ? 'on' : ''}" onclick="setPickMode('TARP')">2. เลือกล็อกกางทาร์ป</button></div><div class="muted" style="font-size:12px">สีเขียว = ล็อกเต็นท์ · สีม่วง = ล็อกทาร์ป</div>` : ''}</div>` : '';
+  if (tc) tc.innerHTML = B.stayType === 'OWN_TENT' ? `<div class="card" style="background:var(--sand);margin:8px 0"><b>ต้องการพื้นที่กางทาร์ปเพิ่มเติมไหม?</b><label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" style="width:auto" ${B.tarpWant ? 'checked' : ''} onchange="toggleTarp(this.checked)"> ต้องการเลือกพื้นที่กางทาร์ป 4×4 เมตรเพิ่มเติม</label>${B.tarpWant ? `<div class="tabs" style="margin-top:8px"><button class="${B.pickMode === 'TENT' ? 'on' : ''}" onclick="setPickMode('TENT')">1. เลือกล็อกเต็นท์</button><button class="${B.pickMode === 'TARP' ? 'on' : ''}" onclick="setPickMode('TARP')">2. เลือกล็อกกางทาร์ป</button></div><div class="muted" style="font-size:12px">เส้นขอบขาวทึบ = ล็อกเต็นท์ · เส้นขอบขาวประ = ล็อกทาร์ป · ทาร์ปต้องอยู่ติดกับเต็นท์ที่จอง (เช่น 1 กับ 2, 2 กับ 3)</div>` : ''}</div>` : '';
   { const tsv = $('#tentsvg'); if (tsv) { const nm = id => { const u = B.avail.units.find(x => x.unitId === id); return u && TENT_PATH[u.name] ? TENT_PATH[u.name] : ''; };
     tsv.innerHTML = B.sel.map(id => nm(id)).filter(Boolean).map(d => `<path d="${d}"/>`).join('') + (B.tarpWant ? B.tarpSel.map(id => nm(id)).filter(Boolean).map(d => `<path class="tp" d="${d}"/>`).join('') : ''); } }
   document.querySelectorAll('[data-u]').forEach(el => { el.classList.toggle('sel', B.sel.includes(el.dataset.u)); el.classList.toggle('tarp-sel', B.tarpSel.includes(el.dataset.u)); });
