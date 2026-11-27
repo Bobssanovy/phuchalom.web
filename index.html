@@ -4,8 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>จองที่พัก ภูชาโลม</title>
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
+<link rel="preconnect" href="https://api.line.me" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <style>
 :root{--forest:#2f5d3a;--forest-d:#244a2d;--moss:#6a8f55;--sand:#f7f2e8;--card:#fffdf8;--ink:#1f2a24;--mute:#6b746d;--line:#e6dfcf;
@@ -155,7 +161,7 @@ const CONFIG = {
 
 /* ===================== ตัวช่วย ===================== */
 const $ = (s, r = document) => r.querySelector(s);
-const WEB_VERSION = 'v35-tarp-adjacent-2026-11-27';
+const WEB_VERSION = 'v36-speed-cache-2026-11-27';
 const S = { me: null, cfg: null, page: 'book', book: null, status: { list: null, open: null }, pay: {}, resch: {}, admin: { tab: 'cal', month: null, data: null, bookings: null, q: '', st: '' } };
 const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 const TH_MONTH_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
@@ -182,10 +188,11 @@ function toast(msg, kind) { return `<div class="${kind || 'err'}" style="margin:
 
 async function api(action, params) {
   const idToken = liff.getIDToken();
-  let j;
+  let j; const t0 = performance.now();
   try {
     const res = await fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action, params: params || {}, idToken }) });
     j = await res.json();
+    { const v = $('#ver'); if (v && v.dataset.base) v.textContent = v.dataset.base + ' · ' + action + ' ' + Math.round(performance.now() - t0) + 'ms (หลังบ้าน ' + (j.ms == null ? '?' : j.ms) + 'ms)'; }
   } catch (x) {
     const e = new Error('เชื่อมต่อระบบหลังบ้านไม่ได้ (Apps Script) — ตรวจว่า Deploy เป็น New version แล้ว, ตั้ง Who has access = Anyone, และในโปรเจกต์มีฟังก์ชัน doPost จากไฟล์ Code.gs ล่าสุด [' + x.message + ']');
     e.code = 'NETWORK'; throw e;
@@ -223,6 +230,7 @@ async function init() {
     if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
     S.me = await api('me');
     { const v = $('#ver'); if (v) v.textContent = 'หน้าเว็บ ' + WEB_VERSION + ' · หลังบ้าน ' + (S.me.version || 'เก่า (ยังไม่ได้อัปเดต)'); }
+    { const v = $('#ver'); if (v) v.dataset.base = v.textContent; }
     S.cfg = S.me.config;
     const p = getPage();
     S.page = (p === 'admin' && !S.me.isAdmin) ? 'book' : p;
